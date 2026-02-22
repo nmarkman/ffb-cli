@@ -50,6 +50,22 @@ ffb login --logout   # clear your saved session
 
 Session data is stored at `~/.config/ffb/session.json`.
 
+### Headless Login (for AI Agents / CI)
+
+If you're running in a headless environment (AI agents, SSH sessions, CI pipelines), use `--headless` to log in without a browser window:
+
+```bash
+# With flags
+ffb login --headless -u me@email.com -p mypassword
+
+# With environment variables
+export FFB_USERNAME=me@email.com
+export FFB_PASSWORD=mypassword
+ffb login --headless
+```
+
+This performs the same browser-based authentication under the hood (headless Chromium), so it captures identical session cookies and API tokens. The session file is the same — once logged in, all commands work exactly the same way regardless of how you authenticated.
+
 ## Commands
 
 ### Player Search (no login required)

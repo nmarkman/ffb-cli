@@ -33,45 +33,95 @@ def run_login_flow() -> SessionData:
             typer.echo("Login timed out. Please try again.", err=True)
             raise typer.Exit(1)
 
-        # Navigate to the UDK (premium page) to ensure full auth context
-        page.goto(UDK_URL)
-        page.wait_for_load_state("networkidle", timeout=30_000)
+        session = _capture_session(context, page)
+        browser.close()
 
-        # Extract nonce - try multiple sources
-        nonce = _extract_nonce(page)
-        if not nonce:
+    save_session(session)
+    typer.echo(f"Login successful! Captured {len(session.cookies)} cookies.")
+    return session
+
+
+def run_headless_login_flow(username: str, password: str) -> SessionData:
+    """Automated headless login for AI agents and CI environments."""
+    typer.echo("Starting headless login...")
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        context = browser.new_context()
+        page = context.new_page()
+
+        page.goto(LOGIN_URL, wait_until="domcontentloaded", timeout=60_000)
+        page.wait_for_timeout(3_000)
+
+        # Fill WordPress login form
+        username_field = page.query_selector("#user_login")
+        password_field = page.query_selector("#user_pass")
+        submit_button = page.query_selector("#wp-submit")
+
+        if not username_field or not password_field or not submit_button:
             browser.close()
-            typer.echo("Logged in but could not capture API nonce. Try again.", err=True)
+            typer.echo(
+                "Could not find login form fields. The site layout may have changed.",
+                err=True,
+            )
             raise typer.Exit(1)
 
-        # Extract cookies for the FFB domain
-        all_cookies = context.cookies()
-        ffb_cookies = [
-            CookieData(
-                name=c["name"],
-                value=c["value"],
-                domain=c["domain"],
-                path=c.get("path", "/"),
-            )
-            for c in all_cookies
-            if "thefantasyfootballers.com" in c.get("domain", "")
-        ]
+        username_field.fill(username)
+        password_field.fill(password)
+        submit_button.click()
 
+        try:
+            page.wait_for_url(
+                lambda url: "/login" not in url,
+                timeout=30_000,
+            )
+        except PWTimeout:
+            browser.close()
+            typer.echo(
+                "Login failed. Check your credentials and try again.",
+                err=True,
+            )
+            raise typer.Exit(1)
+
+        session = _capture_session(context, page)
         browser.close()
+
+    save_session(session)
+    typer.echo(f"Login successful! Captured {len(session.cookies)} cookies.")
+    return session
+
+
+def _capture_session(context, page) -> SessionData:
+    """Navigate to UDK, extract nonce and cookies, return SessionData."""
+    page.goto(UDK_URL, timeout=60_000)
+    page.wait_for_load_state("networkidle", timeout=30_000)
+
+    nonce = _extract_nonce(page)
+    if not nonce:
+        typer.echo("Logged in but could not capture API nonce. Try again.", err=True)
+        raise typer.Exit(1)
+
+    all_cookies = context.cookies()
+    ffb_cookies = [
+        CookieData(
+            name=c["name"],
+            value=c["value"],
+            domain=c["domain"],
+            path=c.get("path", "/"),
+        )
+        for c in all_cookies
+        if "thefantasyfootballers.com" in c.get("domain", "")
+    ]
 
     if not ffb_cookies:
         typer.echo("No cookies captured. Login may have failed.", err=True)
         raise typer.Exit(1)
 
-    session = SessionData(
+    return SessionData(
         cookies=ffb_cookies,
         nonce=nonce,
         created_at=datetime.now(timezone.utc).isoformat(),
     )
-
-    save_session(session)
-    typer.echo(f"Login successful! Captured {len(ffb_cookies)} cookies.")
-    return session
 
 
 def _extract_nonce(page) -> str | None:
