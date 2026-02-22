@@ -1,7 +1,25 @@
+# Virtual environment
 .venv/
+
+# Python
 __pycache__/
+*.pyc
+*.pyo
 *.egg-info/
 dist/
 build/
-*.pyc
 .pytest_cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Environment / secrets
+.env
+.env.*
+
+# Claude
+.claude/

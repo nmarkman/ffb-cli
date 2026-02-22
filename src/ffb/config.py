@@ -10,7 +10,8 @@ BASE_URL = "https://www.thefantasyfootballers.com"
 API_BASE = f"{BASE_URL}/wp-json"
 
 # Auth
-UDK_URL = f"{BASE_URL}/udk/"
+LOGIN_URL = f"{BASE_URL}/login/"
+UDK_URL = f"{BASE_URL}/2026-ultimate-draft-kit/"
 LOGIN_TIMEOUT_MS = 120_000  # 2 minutes for user to log in
 
 # Scoring formats

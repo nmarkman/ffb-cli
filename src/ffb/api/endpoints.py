@@ -10,4 +10,4 @@ UDK_PROJECTIONS = "/ffb/v1/udk/projections"
 START_SIT = "/ffb/v1/start-sit/save_query"
 
 # HTML scrape (cookies only, no nonce needed in header)
-TRADE_ANALYZER_PAGE = "/trade-value-calculator/"
+TRADE_ANALYZER_PAGE = "/footclan/trade-analyzer/"

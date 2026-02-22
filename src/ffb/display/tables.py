@@ -1,5 +1,7 @@
 from rich.console import Console
+from rich.panel import Panel
 from rich.table import Table
+from rich.text import Text
 
 console = Console()
 
@@ -118,6 +120,30 @@ def startsit_table(result: dict) -> None:
     if result.get("analysis"):
         console.print(f"\n[dim]{result['analysis']}[/dim]")
     console.print(table)
+
+
+def player_info_card(player: dict, articles: list[dict]) -> None:
+    name = player.get("name", "Unknown")
+    pos = player.get("position", "")
+    team = player.get("team", "") or "Free Agent"
+    status = player.get("status") or "Active"
+
+    header = Text()
+    header.append(f"{name}", style="bold white")
+    header.append(f"  {pos}", style="cyan")
+    header.append(f"  {team}", style="green")
+    header.append(f"  ({status})", style="dim")
+
+    if articles:
+        news = Table(show_header=True, box=None, padding=(0, 2))
+        news.add_column("Date", style="dim", no_wrap=True)
+        news.add_column("Title", style="bold")
+        news.add_column("Link", style="cyan")
+        for a in articles:
+            news.add_row(a.get("date", ""), a.get("title", ""), a.get("link", ""))
+        console.print(Panel(news, title=str(header), subtitle="Recent News", border_style="blue"))
+    else:
+        console.print(Panel("[dim]No recent articles found.[/dim]", title=str(header), border_style="blue"))
 
 
 def news_table(articles: list[dict]) -> None:

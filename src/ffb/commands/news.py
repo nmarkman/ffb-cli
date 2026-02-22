@@ -10,20 +10,27 @@ from ..cache.store import get_cached, set_cached
 from ..config import CACHE_TTL_NEWS
 from ..display.tables import news_table, console
 
-app = typer.Typer(help="Fantasy Footballers news.")
-
 
 def _strip_html(text: str) -> str:
     return unescape(re.sub(r"<[^>]+>", "", text))
 
 
-@app.callback(invoke_without_command=True)
-def news(
-    ctx: typer.Context,
+def news_command(
     limit: int = typer.Option(10, "-n", "--limit", help="Number of articles"),
     output_json: bool = typer.Option(False, "--json", help="Output as JSON"),
 ):
-    """Show recent news articles."""
+    """Show recent Fantasy Footballers articles. No login required.
+
+    \b
+    Fetches the latest posts with title, date, and link.
+    Results are cached for 30 minutes.
+
+    \b
+    EXAMPLES:
+      ffb news                  # latest 10 articles
+      ffb news -n 5             # latest 5 articles
+      ffb news --json           # JSON output
+    """
     cache_key = f"news_{limit}"
     cached = get_cached(cache_key, CACHE_TTL_NEWS)
 

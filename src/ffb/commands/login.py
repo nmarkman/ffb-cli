@@ -4,7 +4,24 @@ from ..auth.login import run_login_flow
 from ..auth.session import load_session, clear_session, session_age_hours
 from ..api.client import get_client, AuthExpiredError
 
-app = typer.Typer(help="Manage authentication.")
+app = typer.Typer(help="""Manage authentication with The Fantasy Footballers.
+
+\b
+Running `ffb login` with no flags opens a headed Chromium browser window.
+You must manually log in with your premium account credentials in that
+browser. The CLI captures cookies and an API token once login completes
+(up to 2 minute timeout). This is the ONLY command that requires a browser.
+
+\b
+Session is saved to ~/.config/ffb/session.json and lasts ~24 hours.
+If any command returns a 401/403 error, re-run `ffb login`.
+
+\b
+EXAMPLES:
+  ffb login            # open browser to log in
+  ffb login --status   # check if session is valid
+  ffb login --logout   # clear saved session
+""")
 
 
 @app.callback(invoke_without_command=True)
