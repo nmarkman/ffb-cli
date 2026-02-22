@@ -2,7 +2,7 @@
 
 CLI tool for [The Fantasy Footballers](https://www.thefantasyfootballers.com/) premium tools and public features.
 
-Access rankings, projections, the trade analyzer, start/sit comparisons, player search, and news — all from your terminal.
+Access rankings, projections, the trade analyzer, start/sit comparisons, player search, and news — all from your terminal. Crafted intentionally for both human and AI agent use (assuming your agent has access to your Fantasy Footballers user/pw)
 
 ## Requirements
 
