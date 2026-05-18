@@ -19,8 +19,9 @@ def run_login_flow() -> SessionData:
         context = browser.new_context()
         page = context.new_page()
 
-        # Start at the login page
-        page.goto(LOGIN_URL)
+        # Start at the login page. Use domcontentloaded + long timeout because
+        # the full `load` event waits on ad/tracker subresources that can stall.
+        page.goto(LOGIN_URL, wait_until="domcontentloaded", timeout=60_000)
 
         # Wait for user to log in (URL changes away from /login/)
         try:

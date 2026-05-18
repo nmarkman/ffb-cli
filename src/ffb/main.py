@@ -1,6 +1,7 @@
 import typer
 
 from .commands import login, players
+from .commands import dynasty as dynasty_pkg
 from .commands.rankings import rankings_command
 from .commands.projections import projections_command
 from .commands.trade import trade_command
@@ -20,8 +21,12 @@ authenticate via browser. Session is saved to ~/.config/ffb/session.json
 and lasts ~24 hours. Public commands (players, news) work without login.
 
 \b
-COMMANDS REQUIRING LOGIN: rankings, projections, trade, start-sit
+COMMANDS REQUIRING LOGIN: rankings, projections, trade, start-sit, dynasty
 COMMANDS WITHOUT LOGIN:   players, news
+
+\b
+DYNASTY: Run `ffb dynasty --help` for the full dynasty toolkit (rankings,
+startup, rookies, trade values, scouting reports, etc.). Requires UDK+.
 
 \b
 EXAMPLES:
@@ -32,6 +37,10 @@ EXAMPLES:
   ffb trade --give "Kelce, Lamb" --get "Chase"  # analyze a trade
   ffb start-sit "Ja'Marr Chase" "CeeDee Lamb"  # start/sit comparison
   ffb news -n 5                              # latest 5 articles (no login)
+  ffb dynasty rankings                       # dynasty consensus rankings
+  ffb dynasty startup --superflex -n 50      # SuperFlex startup draft board
+  ffb dynasty rookies                        # 2026 rookie class
+  ffb dynasty trade --give "Mahomes" --get "Daniels"  # dynasty trade values
 
 \b
 All commands support --json for machine-readable output.
@@ -41,6 +50,7 @@ All commands support --json for machine-readable output.
 
 app.add_typer(login.app, name="login")
 app.add_typer(players.app, name="players")
+app.add_typer(dynasty_pkg.app, name="dynasty")
 app.command(name="rankings")(rankings_command)
 app.command(name="projections")(projections_command)
 app.command(name="trade")(trade_command)
