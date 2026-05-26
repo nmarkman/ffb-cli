@@ -12,6 +12,18 @@ START_SIT = "/ffb/v1/start-sit/save_query"
 # HTML scrape (cookies only, no nonce needed in header)
 TRADE_ANALYZER_PAGE = "/footclan/trade-analyzer/"
 
+# UDK pages that embed data via `const data = [...]` (DataTables pattern).
+# Same scrape approach as the dynasty pages below.
+UDK_BYE_WEEKS_PAGE = "/2026-ultimate-draft-kit/udk-bye-weeks/"
+UDK_SOS_PAGE = "/2026-ultimate-draft-kit/udk-strength-of-schedule/"
+UDK_RED_ZONE_PAGE = "/2026-ultimate-draft-kit/udk-red-zone/"
+
+# DFS Pass (best ball rankings, also `const data = [...]`).
+DFS_BEST_BALL_PAGE = "/2026-ultimate-dfs-pass/dfs-pass-best-ball-rankings/"
+
+# Dynasty F.E.L.I.X. scores (rookie reliability metric, `const data = [...]`).
+DYNASTY_FELIX_PAGE = "/2026-dynasty-pass/felix-scores/"
+
 # Dynasty Pass pages (HTML scrape, cookies only).
 # All gated behind UDK+ subscription. Data is rendered inline as JS assignments
 # (window.udk.data, window.tool.tradeAnalyzer.data, const data = [...]) or

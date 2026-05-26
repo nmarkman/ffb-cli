@@ -26,6 +26,7 @@ SLUG_TO_PATH = {
     "injuries": "/2026-dynasty-pass/injury-tracker/",
     "draft-results": "/2026-dynasty-pass/nfl-draft-results/",
     "tips": "/2026-dynasty-pass/dynasty-tips/",
+    "felix": "/2026-dynasty-pass/felix-scores/",
     "landing": "/2026-dynasty-pass/",
 }
 

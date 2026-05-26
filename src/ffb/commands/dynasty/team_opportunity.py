@@ -26,19 +26,27 @@ def dynasty_team_opportunity_command(
     """
     html = slice_main_content(fetch_dynasty_page(DYNASTY_TEAM_OPPORTUNITY_PAGE))
 
-    # Each team block: <div class="ffb-dynasty--opp--team" data-team="KC">
+    # Each team block opens with
+    #   <div class="ffb-dynasty--opp--team" data-team-name="..." data-qb="N" ...>
+    # The 3-letter code lives in the team logo URL: team-nobg/<CODE>.png.
     teams = []
-    for m in re.finditer(
-        r'<div[^>]*class="[^"]*\bffb-dynasty--opp--team\b[^"]*"[^>]*?(?:data-team="([A-Z]{2,3})"[^>]*)?>(.*?)(?=<div[^>]*class="[^"]*\bffb-dynasty--opp--team\b|<footer\b|$)',
-        html, flags=re.S | re.I,
-    ):
-        code = (m.group(1) or "").upper()
-        block = m.group(2)
-        # Find the team header inside the block if data-team wasn't captured
-        if not code:
-            h = re.search(r'<h[23][^>]*>(.+?)</h[23]>', block, flags=re.S)
-            if h:
-                code = strip_html_tags(h.group(1))[:6]
+    block_starts = [
+        m.start()
+        for m in re.finditer(
+            r'<div[^>]*class="[^"]*\bffb-dynasty--opp--team\b[^"]*"[^>]*>',
+            html, flags=re.I,
+        )
+    ]
+    block_starts.append(len(html))
+
+    for i in range(len(block_starts) - 1):
+        block = html[block_starts[i]:block_starts[i + 1]]
+
+        name_m = re.search(r'data-team-name="([^"]+)"', block, flags=re.I)
+        code_m = re.search(r'team-nobg/([A-Z]{2,4})\.', block, flags=re.I)
+        depth_m = re.findall(r'\bdata-(qb|rb|wr|te)="(\d+)"', block, flags=re.I)
+        depth = {k.upper(): int(v) for k, v in depth_m}
+
         summary_match = re.search(
             r'<div[^>]*class="[^"]*\bffb-dynasty--opp--summary\b[^"]*"[^>]*>(.*?)</div>',
             block, flags=re.S | re.I,
@@ -49,10 +57,25 @@ def dynasty_team_opportunity_command(
             block, flags=re.S | re.I,
         )
         vacated = strip_html_tags(vacated_match.group(1)) if vacated_match else ""
-        teams.append({"team": code, "summary": summary[:300], "vacated": vacated[:300]})
+
+        teams.append({
+            "team": (code_m.group(1).upper() if code_m else ""),
+            "team_name": (name_m.group(1) if name_m else ""),
+            "qb_rank": depth.get("QB"),
+            "rb_rank": depth.get("RB"),
+            "wr_rank": depth.get("WR"),
+            "te_rank": depth.get("TE"),
+            "summary": summary[:300],
+            "vacated": vacated[:300],
+        })
 
     if team:
-        teams = [t for t in teams if t.get("team", "").upper() == team.upper()]
+        q = team.upper()
+        teams = [
+            t for t in teams
+            if t.get("team", "").upper() == q
+            or q in t.get("team_name", "").upper()
+        ]
 
     if output_json:
         console.print_json(json.dumps(teams, default=str))

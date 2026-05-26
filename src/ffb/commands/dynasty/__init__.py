@@ -7,6 +7,7 @@ import typer
 
 from . import (
     draft_results,
+    felix,
     free_agents,
     injuries,
     lifecycles,
@@ -29,7 +30,7 @@ app = typer.Typer(
     help="""Dynasty Pass commands. Requires UDK+ subscription.
 
 \b
-Wraps all 14 surfaces of /2026-dynasty-pass/.
+Wraps all 15 surfaces of /2026-dynasty-pass/.
 
 \b
 EXAMPLES:
@@ -40,7 +41,7 @@ EXAMPLES:
   ffb dynasty trade --give "Kelce" --get "McBride"  # dynasty trade values
   ffb dynasty trade-targets              # weekly dynasty trade targets
   ffb dynasty production "Bijan"         # production profile lookup
-  ffb dynasty scouting "Travis Hunter"   # rookie scouting report
+  ffb dynasty scouting "Jeremiyah Love"  # 2026 prospect scouting report
   ffb dynasty team-opportunity           # depth chart opportunity scores
   ffb dynasty movers                     # risers and fallers
   ffb dynasty mock                       # recent rookie mock drafts
@@ -49,6 +50,7 @@ EXAMPLES:
   ffb dynasty draft-results              # 2026 NFL draft results
   ffb dynasty tips                       # baller dynasty tips
   ffb dynasty lifecycles                 # dynasty lifecycles by position
+  ffb dynasty felix WR                   # F.E.L.I.X. dynasty scores
 """,
     no_args_is_help=True,
 )
@@ -68,4 +70,5 @@ app.command(name="injuries")(injuries.dynasty_injuries_command)
 app.command(name="draft-results")(draft_results.dynasty_draft_results_command)
 app.command(name="tips")(tips.dynasty_tips_command)
 app.command(name="lifecycles")(lifecycles.dynasty_lifecycles_command)
+app.command(name="felix")(felix.dynasty_felix_command)
 app.command(name="open")(open_page.dynasty_open_command)
