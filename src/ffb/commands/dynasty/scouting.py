@@ -46,7 +46,7 @@ def dynasty_scouting_command(
     \b
     EXAMPLES:
       ffb dynasty scouting                     # first 20 reports
-      ffb dynasty scouting "Travis Hunter"     # one report
+      ffb dynasty scouting "Jeremiyah Love"    # one 2026 prospect report
     """
     html = slice_main_content(fetch_dynasty_page(DYNASTY_SCOUTING_REPORTS_PAGE))
     reports = _parse_reports(html)

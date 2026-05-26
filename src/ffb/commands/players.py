@@ -57,8 +57,8 @@ def _search_players(
         if not name:
             continue
 
-        pos = p.get("pos", "") or p.get("position", "")
-        tm = p.get("team", "")
+        pos = (p.get("pos") or p.get("position") or "")
+        tm = (p.get("team") or "")
 
         if position and pos.upper() != position.upper():
             continue

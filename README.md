@@ -118,6 +118,50 @@ ffb news           # latest 10 articles
 ffb news -n 5      # latest 5 articles
 ```
 
+### Draft-board variants (login required)
+
+```bash
+ffb top200                       # overall top 200, half-PPR
+ffb top200 -s ppr -n 100         # PPR, top 100
+ffb superflex                    # 2QB / superflex board, 1.30x QB boost by default
+ffb superflex --qb-boost 1.5     # heavier QB premium
+ffb flex                         # RB/WR/TE only, top 50
+```
+
+### Research tools (login required)
+
+```bash
+ffb bye-weeks                    # all 32 teams, sorted by bye week
+ffb bye-weeks -w 8               # only teams on bye in week 8
+ffb bye-weeks -t KC              # one team
+
+ffb sos                          # team SoS grid, all positions
+ffb sos WR                       # sorted by easiest WR schedule
+ffb sos QB --hard                # toughest QB schedules first
+ffb sos -t KC                    # one team's full SoS row
+
+ffb red-zone                     # top 25 by RZ touches (last season)
+ffb red-zone RB -n 30            # top 30 RBs
+ffb red-zone WR -s rec_targets   # WRs by RZ targets
+ffb red-zone QB -s pass_tds      # QBs by RZ pass TDs
+```
+
+### DFS Pass (login required)
+
+```bash
+ffb best-ball                    # top 50 by Underdog ADP
+ffb best-ball WR -n 30           # top 30 WR best-ball values
+ffb best-ball -t KC              # all KC players
+```
+
+### Dynasty F.E.L.I.X. (login required, UDK+)
+
+```bash
+ffb dynasty felix                # top 30 overall FELIX scores
+ffb dynasty felix WR -n 50       # top 50 WRs by FELIX
+ffb dynasty felix RB --min 20    # RBs with FELIX >= 20
+```
+
 ## JSON Output
 
 All commands support `--json` for machine-readable output:
