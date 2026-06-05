@@ -1,57 +1,89 @@
 import json
-import re
+from collections import defaultdict
 
 import typer
 from thefuzz import fuzz
 
 from ..api.client import get_client, AuthExpiredError
+from ..api.dynasty_scrape import num, parse_js_assignment
 from ..api.endpoints import TRADE_ANALYZER_PAGE
 from ..display.tables import trade_table, console
+from .rankings import _calc_points
+
+
+def _values_from_global_blob(blob: dict) -> list[dict]:
+    """Draft-phase shape: `projections` is the full window.udk.data-style dict
+    (per-analyst rows under `projections.projections`). Average each player's
+    stats across analysts and use half-PPR projected points as the trade value."""
+    rows = blob.get("projections", [])
+    by_player: dict[str, list[dict]] = defaultdict(list)
+    meta: dict[str, dict] = {}
+    for r in rows:
+        pid = str(r.get("player_id", ""))
+        by_player[pid].append(r)
+        meta.setdefault(pid, {
+            "name": r.get("name", ""),
+            "fantasy_position": r.get("fantasy_position", ""),
+            "team": r.get("team", ""),
+        })
+
+    stat_fields = [
+        "passing_yards", "passing_touchdowns", "interceptions_thrown",
+        "rushing_yards", "rushing_touchdowns",
+        "receptions", "receiving_yards", "receiving_touchdowns", "fumbles_lost",
+    ]
+    out = []
+    for pid, entries in by_player.items():
+        avg = {f: sum(num(e.get(f)) for e in entries) / len(entries) for f in stat_fields}
+        out.append({
+            "player_name": meta[pid]["name"],
+            "position": meta[pid]["fantasy_position"],
+            "team": meta[pid]["team"],
+            "value": round(_calc_points(avg, "HALF"), 1),
+        })
+    out.sort(key=lambda p: -p["value"])
+    for i, p in enumerate(out, 1):
+        p["rank"] = i
+    return out
+
+
+def _values_from_list(players: list) -> list[dict]:
+    """In-season shape: a flat list of player dicts that already carry
+    `fantasy_points`."""
+    return [{
+        "player_name": p.get("name", ""),
+        "position": p.get("fantasy_position", ""),
+        "team": p.get("team", ""),
+        "rank": p.get("rank", 0),
+        "value": num(p.get("fantasy_points")),
+    } for p in players]
 
 
 def _fetch_trade_values(client) -> list[dict]:
-    """Scrape trade values from the trade analyzer page HTML."""
-    html = client.get_page(TRADE_ANALYZER_PAGE)
+    """Scrape trade values from the trade analyzer page HTML.
 
-    # Data is at: window.tool.tradeAnalyzer.data = {...};
-    match = re.search(r'window\.tool\.tradeAnalyzer\.data\s*=\s*(\{)', html)
-    if not match:
+    The `window.tool.tradeAnalyzer.data.projections` payload changes shape by
+    season phase: a flat list of scored players in-season, or the full
+    window.udk.data-style dict during the draft phase. Handle both, falling back
+    to the in-season `dynastyProjections` list if needed."""
+    html = client.get_page(TRADE_ANALYZER_PAGE)
+    data = parse_js_assignment(html, "window.tool.tradeAnalyzer.data")
+    if not isinstance(data, dict):
         typer.echo("Could not find trade analyzer data on page.", err=True)
         raise typer.Exit(1)
 
-    # Brace-match to extract the full JSON object
-    start = match.start(1)
-    depth = 0
-    for i, c in enumerate(html[start:]):
-        if c == '{':
-            depth += 1
-        elif c == '}':
-            depth -= 1
-        if depth == 0:
-            raw = html[start:start + i + 1]
-            break
+    projections = data.get("projections")
+    if isinstance(projections, dict) and projections.get("projections"):
+        result = _values_from_global_blob(projections)
+    elif isinstance(projections, list) and projections:
+        result = _values_from_list(projections)
     else:
-        typer.echo("Could not parse trade analyzer data.", err=True)
-        raise typer.Exit(1)
+        dyn = data.get("dynastyProjections")
+        result = _values_from_list(dyn) if isinstance(dyn, list) else []
 
-    data = json.loads(raw)
-
-    # In-season: "projections" has data. Offseason: "dynastyProjections" has data.
-    players = data.get("projections") or data.get("dynastyProjections") or []
-    if not players:
+    if not result:
         typer.echo("No trade value data available.", err=True)
         raise typer.Exit(1)
-
-    # Normalize into a consistent format with "value" based on fantasy_points
-    result = []
-    for p in players:
-        result.append({
-            "player_name": p.get("name", ""),
-            "position": p.get("fantasy_position", ""),
-            "team": p.get("team", ""),
-            "rank": p.get("rank", 0),
-            "value": float(p.get("fantasy_points", 0)),
-        })
     return result
 
 
