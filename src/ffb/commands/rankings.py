@@ -7,7 +7,7 @@ from ..api.client import get_client, AuthExpiredError
 from ..api.endpoints import UDK_PROJECTIONS
 from ..cache.store import get_cached, set_cached
 from ..config import CACHE_TTL_PROJECTIONS, SCORING_FORMATS, DEFAULT_SCORING, VALID_POSITIONS
-from ..display.tables import rankings_table, console
+from ..display.tables import rankings_table, enriched_rankings_table, console
 
 # Points per stat by scoring format
 POINTS_CONFIG = {
@@ -39,6 +39,18 @@ def _num(val) -> float:
         return float(val)
     except (ValueError, TypeError):
         return 0.0
+
+
+def validate_scoring(scoring: str) -> str:
+    """Validate a scoring format, exiting cleanly on an unknown value so a bad
+    value never silently falls back to half-PPR with a mislabeled title."""
+    if scoring.lower() not in SCORING_FORMATS:
+        typer.echo(
+            f"Unknown scoring '{scoring}'. Valid: {', '.join(SCORING_FORMATS)}.",
+            err=True,
+        )
+        raise typer.Exit(1)
+    return scoring.lower()
 
 
 def _fetch_projections(scoring: str) -> list[dict]:
@@ -164,6 +176,7 @@ def rankings_command(
     scoring: str = typer.Option(DEFAULT_SCORING, "-s", "--scoring", help="Scoring format (half/ppr/standard)"),
     limit: int = typer.Option(25, "-n", "--limit", help="Max results"),
     tier: int = typer.Option(None, "--tier", help="Filter by tier"),
+    enrich: bool = typer.Option(False, "--enrich", help="Add analyst risk/upside/targets (and blurb in --json)"),
     output_json: bool = typer.Option(False, "--json", help="Output as JSON"),
 ):
     """View player rankings by position and scoring format. Requires login.
@@ -176,12 +189,19 @@ def rankings_command(
     POSITIONS:       QB, RB, WR, TE, K, DST
 
     \b
+    With --enrich, pulls the richer UDK global dataset to add each player's
+    analyst risk (1-10, lower is safer), upside (1-10), and projected targets;
+    --json additionally includes the player blurb.
+
+    \b
     EXAMPLES:
       ffb rankings                     # all positions, half-PPR
       ffb rankings QB -s ppr -n 10     # top 10 QBs, PPR scoring
       ffb rankings RB --tier 1         # tier 1 RBs only
+      ffb rankings WR --enrich         # add risk / upside / targets
       ffb rankings WR --json           # JSON output
     """
+    scoring = validate_scoring(scoring)
     try:
         players = _fetch_projections(scoring)
     except AuthExpiredError:
@@ -203,7 +223,13 @@ def rankings_command(
         typer.echo("No rankings found for the given filters.")
         raise typer.Exit(0)
 
+    if enrich:
+        from ..api.udk_global import enrich_players
+        enrich_players(players)
+
     if output_json:
         console.print_json(json.dumps(players))
+    elif enrich:
+        enriched_rankings_table(players, scoring)
     else:
         rankings_table(players, scoring)

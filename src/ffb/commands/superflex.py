@@ -9,7 +9,7 @@ import typer
 from ..api.client import AuthExpiredError
 from ..config import DEFAULT_SCORING
 from ..display.tables import rankings_table, console
-from .rankings import _fetch_projections
+from .rankings import _fetch_projections, validate_scoring
 
 
 def superflex_command(
@@ -36,6 +36,7 @@ def superflex_command(
       ffb superflex --qb-boost 1.5        # heavier QB premium
       ffb superflex --qb-boost 1.0        # raw rankings, no boost
     """
+    scoring = validate_scoring(scoring)
     try:
         base = _fetch_projections(scoring)
     except AuthExpiredError:
