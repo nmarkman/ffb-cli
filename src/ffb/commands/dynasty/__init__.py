@@ -16,6 +16,7 @@ from . import (
     open_page,
     production,
     rankings,
+    rookie_overview,
     rookies,
     scouting,
     startup,
@@ -58,6 +59,7 @@ EXAMPLES:
 app.command(name="rankings")(rankings.dynasty_rankings_command)
 app.command(name="startup")(startup.dynasty_startup_command)
 app.command(name="rookies")(rookies.dynasty_rookies_command)
+app.command(name="rookie-overview")(rookie_overview.dynasty_rookie_overview_command)
 app.command(name="production")(production.dynasty_production_command)
 app.command(name="trade")(trade.dynasty_trade_command)
 app.command(name="trade-targets")(trade_targets.dynasty_trade_targets_command)

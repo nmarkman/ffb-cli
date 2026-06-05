@@ -8,7 +8,7 @@ import typer
 from ..api.client import AuthExpiredError
 from ..config import DEFAULT_SCORING
 from ..display.tables import rankings_table, console
-from .rankings import _fetch_projections
+from .rankings import _fetch_projections, validate_scoring
 
 FLEX_POSITIONS = {"RB", "WR", "TE"}
 
@@ -29,6 +29,7 @@ def flex_command(
       ffb flex -s ppr -n 100       # top 100, PPR
       ffb flex --json
     """
+    scoring = validate_scoring(scoring)
     try:
         base = _fetch_projections(scoring)
     except AuthExpiredError:

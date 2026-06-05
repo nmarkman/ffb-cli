@@ -45,7 +45,11 @@ def startsit_command(
 
     # API returns ["error", "message"] during offseason
     if isinstance(data, list) and len(data) >= 2 and data[0] == "error":
-        typer.echo("Start/Sit tool is not available right now (offseason). It opens the week before kickoff.")
+        msg = "Start/Sit tool is not available right now (offseason). It opens the week before kickoff."
+        if output_json:
+            console.print_json(json.dumps({"available": False, "reason": msg}))
+        else:
+            typer.echo(msg)
         raise typer.Exit(0)
 
     if output_json:

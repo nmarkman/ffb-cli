@@ -46,6 +46,36 @@ def rankings_table(players: list[dict], scoring: str) -> None:
     console.print(table)
 
 
+def enriched_rankings_table(players: list[dict], scoring: str) -> None:
+    """Rankings with the richer global-blob fields: analyst risk (1-10, lower is
+    safer), upside (1-10), and projected targets."""
+    table = Table(title=f"Rankings ({scoring.upper()}) , enriched")
+    table.add_column("#", justify="right", style="dim")
+    table.add_column("Player", style="bold")
+    table.add_column("Pos", style="cyan")
+    table.add_column("Team", style="green")
+    table.add_column("Tier", justify="right")
+    table.add_column("Pts", justify="right", style="yellow")
+    table.add_column("Risk", justify="right")
+    table.add_column("Upside", justify="right")
+    table.add_column("Tgts", justify="right")
+    table.add_column("Bye", justify="right", style="dim")
+    for p in players:
+        table.add_row(
+            str(p.get("rank", "")),
+            p.get("player_name", ""),
+            p.get("position", ""),
+            p.get("team", ""),
+            str(p.get("tier", "")),
+            f"{p.get('points', 0):.1f}",
+            _fmt_num(p.get("risk")),
+            _fmt_num(p.get("upside")),
+            _fmt_num(p.get("targets"), 0),
+            str(p.get("bye_week", "")),
+        )
+    console.print(table)
+
+
 def projections_table(players: list[dict], scoring: str) -> None:
     table = Table(title=f"Projections ({scoring.upper()})")
     table.add_column("#", justify="right", style="dim")
@@ -295,6 +325,192 @@ def felix_table(rows: list[dict]) -> None:
             _fmt_num(r.get("felix_reliability")),
         )
     console.print(table)
+
+
+def value_scout_table(rows: list[dict]) -> None:
+    table = Table(title="Value Scout (ADP across formats)")
+    table.add_column("#", justify="right", style="dim")
+    table.add_column("Player", style="bold")
+    table.add_column("Pos", style="cyan")
+    table.add_column("Team", style="green")
+    table.add_column("ADP", justify="right", style="yellow")
+    table.add_column("PPR ADP", justify="right")
+    table.add_column("2QB ADP", justify="right")
+    table.add_column("Dyn ADP", justify="right")
+    table.add_column("Bye", justify="right", style="dim")
+    for r in rows:
+        table.add_row(
+            str(r.get("rank", "")),
+            r.get("name", ""),
+            r.get("fantasy_position", ""),
+            r.get("team", "") or "",
+            _fmt_num(r.get("adp"), 1),
+            _fmt_num(r.get("adp_ppr"), 1),
+            _fmt_num(r.get("adp_2qb"), 1),
+            _fmt_num(r.get("adp_dynasty"), 1),
+            str(r.get("bye_week", "") or ""),
+        )
+    console.print(table)
+
+
+def market_share_table(rows: list[dict], season: int) -> None:
+    table = Table(title=f"Market Share ({season}, share of team usage)")
+    table.add_column("#", justify="right", style="dim")
+    table.add_column("Player", style="bold")
+    table.add_column("Pos", style="cyan")
+    table.add_column("Team", style="green")
+    table.add_column("Gms", justify="right", style="dim")
+    table.add_column("Tgt %", justify="right", style="yellow")
+    table.add_column("Rush %", justify="right")
+    table.add_column("RecYd %", justify="right")
+    table.add_column("Pts %", justify="right")
+    for r in rows:
+        table.add_row(
+            str(r.get("rank", "")),
+            r.get("name", ""),
+            r.get("fantasy_position", ""),
+            r.get("team", "") or "",
+            str(r.get("games", "")),
+            _fmt_pct(r.get("target_share")),
+            _fmt_pct(r.get("rush_share")),
+            _fmt_pct(r.get("rec_yd_share")),
+            _fmt_pct(r.get("points_share")),
+        )
+    console.print(table)
+
+
+def target_share_table(rows: list[dict], season: int) -> None:
+    table = Table(title=f"Target Breakdown ({season}, team target distribution)")
+    table.add_column("#", justify="right", style="dim")
+    table.add_column("Team", style="bold")
+    table.add_column("Abbr", style="cyan")
+    table.add_column("Tgts/Gm", justify="right", style="dim")
+    table.add_column("WR %", justify="right", style="yellow")
+    table.add_column("RB %", justify="right")
+    table.add_column("TE %", justify="right")
+    for r in rows:
+        table.add_row(
+            str(r.get("rank", "")),
+            r.get("name", ""),
+            r.get("key", "") or "",
+            _fmt_num(r.get("targets_per_game"), 1),
+            _fmt_pct(r.get("wr_share")),
+            _fmt_pct(r.get("rb_share")),
+            _fmt_pct(r.get("te_share")),
+        )
+    console.print(table)
+
+
+def free_agency_table(rows: list[dict]) -> None:
+    table = Table(title="UDK Free Agency Review")
+    table.add_column("Player", style="bold", no_wrap=True)
+    table.add_column("Move", style="cyan", overflow="fold")
+    table.add_column("Analysis", overflow="fold")
+    for r in rows:
+        table.add_row(r.get("name", ""), r.get("move", ""), r.get("blurb", ""))
+    console.print(table)
+
+
+def player_report_table(rows: list[dict], *, title: str) -> None:
+    table = Table(title=title)
+    table.add_column("Player", style="bold", no_wrap=True)
+    table.add_column("Pos", style="cyan")
+    table.add_column("Team", style="green")
+    table.add_column("Report", overflow="fold")
+    for r in rows:
+        table.add_row(
+            r.get("name", ""),
+            r.get("position", ""),
+            r.get("team", "") or "",
+            r.get("blurb", ""),
+        )
+    console.print(table)
+
+
+def narrative_panels(sections: list[dict], *, title: str) -> None:
+    """Render heading/body sections as stacked panels (narrative pages)."""
+    console.print(f"[bold]{title}[/bold]\n")
+    for s in sections:
+        console.print(Panel(s.get("body", ""), title=s.get("heading", ""), border_style="blue"))
+
+
+def prose_panel(paragraphs: list[str], *, title: str) -> None:
+    """Render a list of paragraphs as one readable block."""
+    console.print(Panel("\n\n".join(paragraphs), title=title, border_style="blue"))
+
+
+def expert_list_table(rows: list[dict], *, list_type: str) -> None:
+    table = Table(title=f"UDK Expert List: {list_type.title()}")
+    table.add_column("Player", style="bold", no_wrap=True)
+    table.add_column("Pos", style="cyan")
+    table.add_column("Team", style="green")
+    table.add_column("ADP", justify="right", style="yellow")
+    table.add_column("Why", overflow="fold")
+    for r in rows:
+        table.add_row(
+            r.get("name", ""),
+            r.get("position", ""),
+            r.get("team", "") or "",
+            _fmt_num(r.get("adp"), 2),
+            r.get("blurb", ""),
+        )
+    console.print(table)
+
+
+def consistency_table(rows: list[dict], *, season: int, scoring: str) -> None:
+    table = Table(title=f"Consistency ({season}, {scoring.upper()})")
+    table.add_column("#", justify="right", style="dim")
+    table.add_column("Player", style="bold")
+    table.add_column("Pos", style="cyan")
+    table.add_column("Team", style="green")
+    table.add_column("Gms", justify="right", style="dim")
+    table.add_column("PPG", justify="right", style="yellow")
+    table.add_column("Start%", justify="right")
+    table.add_column("Boom%", justify="right", style="green")
+    table.add_column("Bust%", justify="right", style="red")
+    table.add_column("StdDev", justify="right")
+    for r in rows:
+        table.add_row(
+            str(r.get("rank", "")),
+            r.get("name", ""),
+            r.get("fantasy_position", ""),
+            r.get("team", "") or "",
+            str(r.get("games", "")),
+            _fmt_num(r.get("ppg"), 1),
+            _fmt_pct(r.get("start_pct")),
+            _fmt_pct(r.get("boom_pct")),
+            _fmt_pct(r.get("bust_pct")),
+            _fmt_num(r.get("stdev"), 1),
+        )
+    console.print(table)
+
+
+def consistency_weekly_table(player: dict, weeks: list[dict], *, scoring: str) -> None:
+    title = f"{player.get('name', '')} ({player.get('fantasy_position', '')} {player.get('team', '')}) , {player.get('season', '')} {scoring.upper()} game log"
+    table = Table(title=title)
+    table.add_column("Wk", justify="right", style="dim")
+    table.add_column("Opp", style="cyan")
+    table.add_column("Pts", justify="right", style="yellow")
+    table.add_column("Pos Rank", justify="right")
+    table.add_column("Started", justify="center")
+    for w in weeks:
+        table.add_row(
+            str(w.get("week", "")),
+            w.get("opponent", "") or "-",
+            _fmt_num(w.get("points"), 1),
+            (f"{w.get('position_rank')}" if w.get("position_rank") else "-"),
+            "Y" if w.get("started") else "-",
+        )
+    console.print(table)
+
+
+def _fmt_pct(val) -> str:
+    if val is None or val == "":
+        return ""
+    try:
+        return f"{float(val) * 100:.1f}%"
+    except (TypeError, ValueError):
+        return str(val)
 
 
 def _fmt_num(val, places: int = 1) -> str:

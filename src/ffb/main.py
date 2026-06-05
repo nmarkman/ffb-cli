@@ -14,6 +14,15 @@ from .commands.best_ball import best_ball_command
 from .commands.top200 import top200_command
 from .commands.superflex import superflex_command
 from .commands.flex import flex_command
+from .commands.value_scout import value_scout_command
+from .commands.market_share import market_share_command
+from .commands.target_share import target_share_command
+from .commands.free_agency import free_agency_command
+from .commands.coaching_changes import coaching_changes_command
+from .commands.rookie_report import rookie_report_command
+from .commands.consistency import consistency_command
+from .commands.experts import experts_command
+from .commands.tools import tools_command
 
 app = typer.Typer(
     name="ffb",
@@ -30,8 +39,14 @@ and lasts ~24 hours. Public commands (players, news) work without login.
 \b
 COMMANDS REQUIRING LOGIN: rankings, projections, trade, start-sit, dynasty,
                           bye-weeks, sos, red-zone, best-ball,
-                          top200, superflex, flex
-COMMANDS WITHOUT LOGIN:   players, news
+                          top200, superflex, flex, value-scout, market-share,
+                          target-share, consistency, free-agency,
+                          coaching-changes, rookie-report, experts
+COMMANDS WITHOUT LOGIN:   players, news, tools
+
+\b
+TOOLS MAP: Run `ffb tools` to see every Fantasy Footballers tool, what's free
+vs paywalled (UDK / UDK+ / DFS Pass), and which CLI command covers it.
 
 \b
 DYNASTY: Run `ffb dynasty --help` for the full dynasty toolkit (rankings,
@@ -52,6 +67,13 @@ EXAMPLES:
   ffb sos WR                                 # easiest WR schedules
   ffb red-zone RB -n 30                      # top 30 RBs by RZ usage
   ffb best-ball WR                           # best-ball WR rankings
+  ffb value-scout RB                         # ADP across formats
+  ffb market-share WR                        # WR share of team usage
+  ffb target-share -s te                     # teams that target TEs most
+  ffb consistency RB -s boom                 # RB boom-rate leaders
+  ffb experts sleepers                       # the Footballers' sleeper picks
+  ffb rankings WR --enrich                   # rankings + risk/upside/targets
+  ffb tools --tier free                      # what works without an account
   ffb news -n 5                              # latest 5 articles (no login)
   ffb dynasty rankings                       # dynasty consensus rankings
   ffb dynasty startup --superflex -n 50      # SuperFlex startup draft board
@@ -80,6 +102,15 @@ app.command(name="best-ball")(best_ball_command)
 app.command(name="top200")(top200_command)
 app.command(name="superflex")(superflex_command)
 app.command(name="flex")(flex_command)
+app.command(name="value-scout")(value_scout_command)
+app.command(name="market-share")(market_share_command)
+app.command(name="target-share")(target_share_command)
+app.command(name="free-agency")(free_agency_command)
+app.command(name="coaching-changes")(coaching_changes_command)
+app.command(name="rookie-report")(rookie_report_command)
+app.command(name="consistency")(consistency_command)
+app.command(name="experts")(experts_command)
+app.command(name="tools")(tools_command)
 
 
 if __name__ == "__main__":

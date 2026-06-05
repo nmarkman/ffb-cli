@@ -5,7 +5,7 @@ import typer
 from ..api.client import AuthExpiredError
 from ..config import DEFAULT_SCORING, VALID_POSITIONS
 from ..display.tables import projections_table, console
-from .rankings import _fetch_projections
+from .rankings import _fetch_projections, validate_scoring
 
 
 def projections_command(
@@ -13,6 +13,7 @@ def projections_command(
     scoring: str = typer.Option(DEFAULT_SCORING, "-s", "--scoring", help="Scoring format (half/ppr/standard)"),
     week: int = typer.Option(None, "-w", "--week", help="Week number"),
     limit: int = typer.Option(25, "-n", "--limit", help="Max results"),
+    enrich: bool = typer.Option(False, "--enrich", help="Add analyst risk/upside/targets/blurb to --json output"),
     output_json: bool = typer.Option(False, "--json", help="Output as JSON"),
 ):
     """View detailed stat projections by position. Requires login.
@@ -29,8 +30,10 @@ def projections_command(
     EXAMPLES:
       ffb projections QB               # QB stat projections
       ffb projections RB -s ppr -n 15  # top 15 RB projections, PPR
+      ffb projections QB --enrich --json  # add risk/upside/targets/blurb (JSON)
       ffb projections --json           # all positions, JSON output
     """
+    scoring = validate_scoring(scoring)
     try:
         players = _fetch_projections(scoring)
     except AuthExpiredError:
@@ -46,6 +49,10 @@ def projections_command(
     if not players:
         typer.echo("No projections found for the given filters.")
         raise typer.Exit(0)
+
+    if enrich:
+        from ..api.udk_global import enrich_players
+        enrich_players(players)
 
     if output_json:
         console.print_json(json.dumps(players))
