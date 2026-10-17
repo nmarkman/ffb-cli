@@ -7,9 +7,11 @@ from __future__ import annotations
 
 import re
 
+import requests
 import typer
 
 from ..api.client import AuthExpiredError, FFBClient, get_client
+from ..auth.session import load_session
 from ..api.dynasty_scrape import (
     extract_const_assignment,
     extract_headings_with_content,
@@ -20,8 +22,13 @@ from ..cache.store import get_cached, set_cached
 from ..config import CACHE_TTL_UDK_PAGE
 
 
-def fetch_page(path: str, *, ttl: int = CACHE_TTL_UDK_PAGE) -> str:
-    """Fetch a paywalled page HTML, cache by path. Bails on auth failure."""
+def fetch_page(path: str, *, ttl: int = CACHE_TTL_UDK_PAGE, require: str | None = None) -> str:
+    """Fetch a paywalled page HTML, cache by path. Bails on auth failure.
+
+    ``require`` is a marker the page must contain to be worth caching (e.g.
+    "const data"). Some pages answer an expired session with a 200 and an
+    empty shell; without the check that shell would be cached and served
+    even after `ffb login`."""
     cache_key = f"udk_page:{path}"
     cached = get_cached(cache_key, ttl)
     if cached:
@@ -32,7 +39,8 @@ def fetch_page(path: str, *, ttl: int = CACHE_TTL_UDK_PAGE) -> str:
     except AuthExpiredError:
         typer.echo("Session expired. Run `ffb login` to re-authenticate.", err=True)
         raise typer.Exit(1)
-    set_cached(cache_key, html)
+    if require is None or require in html:
+        set_cached(cache_key, html)
     return html
 
 
@@ -65,6 +73,49 @@ def load_const_data_raw(path: str, var_name: str = "data"):
         )
         raise typer.Exit(1)
     return data
+
+
+def load_current_season(path: str, var_name: str = "data"):
+    """The FootClan copy of a UDK research table: same rows, current season.
+
+    Supplementary data, so any failure (no session, expired session, out of
+    season, no FootClan access, layout change) returns None quietly and the
+    caller keeps the UDK payload alone. It deliberately doesn't go through
+    ``fetch_page``, which prints and exits on auth failure."""
+    cache_key = f"udk_page:{path}"
+    html = get_cached(cache_key, CACHE_TTL_UDK_PAGE)
+    if not html:
+        session = load_session()
+        if not session:
+            return None
+        try:
+            html = FFBClient(session).get_page(path)
+        except (AuthExpiredError, requests.RequestException):
+            return None
+        if f"const {var_name}" not in html:
+            return None
+        set_cached(cache_key, html)
+    return extract_const_assignment(html, var_name)
+
+
+def merge_current_season(udk_rows: list, current_rows) -> list:
+    """Put the FootClan current-season rows in front of the UDK history,
+    dropping any UDK rows for the same season so nothing double counts."""
+    if not isinstance(current_rows, list) or not current_rows:
+        return udk_rows
+    current = {to_int(r.get("season")) for r in current_rows if r.get("season")}
+    return current_rows + [r for r in udk_rows if to_int(r.get("season")) not in current]
+
+
+def resolve_min_games(min_games: int | None, default: int, games_so_far: int) -> int:
+    """An explicit --min-games wins. Otherwise use the command's default,
+    scaled down early in a season so Week 5 doesn't filter out everyone
+    (half the games played, rounded up)."""
+    if min_games is not None:
+        return min_games
+    if games_so_far <= 0:
+        return default
+    return min(default, max(1, (games_so_far + 1) // 2))
 
 
 # Sidebar / chrome headings that leak into the main-content slice on the article

@@ -57,7 +57,14 @@ class FFBClient:
 
 
 def get_client(require_auth: bool = False) -> FFBClient:
-    """Create client, optionally requiring auth."""
+    """Create client, optionally requiring auth.
+
+    Public calls go out anonymously: WordPress rejects a request whose login
+    cookie carries a stale nonce (403 rest_cookie_invalid_nonce) even on public
+    endpoints, so an expired session would otherwise break the free commands.
+    """
+    if not require_auth:
+        return FFBClient(None)
     session = load_session()
     if require_auth and not session:
         typer.echo("Not logged in. Run `ffb login` first.", err=True)

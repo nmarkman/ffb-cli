@@ -69,13 +69,22 @@ CATALOG: list[dict] = [
     # ---- DFS Pass ----
     {"category": "DFS Pass", "tool": "Best Ball Rankings", "tier": DFS, "command": "ffb best-ball", "summary": "Best-ball rankings by ADP"},
     {"category": "DFS Pass", "tool": "Best Ball Primer", "tier": DFS, "command": None, "summary": "Strategy article (no data table)"},
-    {"category": "DFS Pass", "tool": "Lineup Optimizer", "tier": DFS, "command": None, "summary": "In-season DFS optimizer (seasonal)"},
+    {"category": "DFS Pass", "tool": "Weekly DFS Rankings", "tier": DFS, "command": "ffb dfs", "summary": "DraftKings / FanDuel salaries, projections, points per $1K"},
+    {"category": "DFS Pass", "tool": "Lineup Optimizer", "tier": DFS, "command": None, "summary": "Interactive in-app optimizer (no page data)"},
 
     # ---- In-season FootClan ----
+    {"category": "In-Season (FootClan)", "tool": "Premium Rankings", "tier": FOOTCLAN, "command": "ffb weekly", "summary": "This week's QB/RB/WR/TE/FLEX/DST/K ranks + analyst ranks"},
+    {"category": "In-Season (FootClan)", "tool": "Start/Sit Tool", "tier": FOOTCLAN, "command": "ffb start-sit", "summary": "Compare 2-4 players on this week's projections"},
+    {"category": "In-Season (FootClan)", "tool": "Waiver Wire Rankings", "tier": FOOTCLAN, "command": "ffb waivers", "summary": "Weekly adds with suggested FAAB and stash flags"},
+    {"category": "In-Season (FootClan)", "tool": "Rest-of-Season Ranks", "tier": FOOTCLAN, "command": "ffb ros", "summary": "ROS consensus ranks, points, games left, PPG"},
+    {"category": "In-Season (FootClan)", "tool": "Stream Finder", "tier": FOOTCLAN, "command": "ffb stream", "summary": "Defense-vs-position points allowed + upcoming opponents"},
+    {"category": "In-Season (FootClan)", "tool": "Ultimate Dashboard: Games", "tier": FOOTCLAN, "command": "ffb games", "summary": "Spreads, totals, implied team totals, weather, byes"},
+    {"category": "In-Season (FootClan)", "tool": "Ultimate Dashboard: News", "tier": FOOTCLAN, "command": "ffb player-news", "summary": "Player news, injury status and fantasy analysis"},
     {"category": "In-Season (FootClan)", "tool": "Trade Analyzer", "tier": FOOTCLAN, "command": "ffb trade", "summary": "Redraft trade values"},
-    {"category": "In-Season (FootClan)", "tool": "Start/Sit Tool", "tier": FOOTCLAN, "command": "ffb start-sit", "summary": "Weekly start/sit comparison (in-season)"},
-    {"category": "In-Season (FootClan)", "tool": "Stream Finder", "tier": FOOTCLAN, "command": None, "summary": "Weekly streaming options (seasonal)"},
-    {"category": "In-Season (FootClan)", "tool": "Rest-of-Season Ranks", "tier": FOOTCLAN, "command": None, "summary": "ROS rankings (seasonal)"},
+    {"category": "In-Season (FootClan)", "tool": "Weekly Snapshot Tool", "tier": FOOTCLAN, "command": "ffb consistency", "summary": "Current-season weekly consistency (defaults to this season)"},
+    {"category": "In-Season (FootClan)", "tool": "Market Share / Target Breakdown / Red Zone", "tier": FOOTCLAN, "command": "ffb market-share / target-share / red-zone", "summary": "Current-season usage (default season in-season)"},
+    {"category": "In-Season (FootClan)", "tool": "Career Snapshot Tool", "tier": FOOTCLAN, "command": None, "summary": "Year-by-year career fantasy finishes"},
+    {"category": "In-Season (FootClan)", "tool": "Player / Team Stats", "tier": FOOTCLAN, "command": None, "summary": "Raw weekly box-score stats"},
 ]
 
 

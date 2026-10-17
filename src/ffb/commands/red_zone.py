@@ -1,13 +1,13 @@
-"""ffb red-zone, UDK red-zone usage report."""
+"""ffb red-zone, red-zone usage report (UDK history plus the FootClan current season)."""
 from __future__ import annotations
 
 import json
 
 import typer
 
-from ..api.endpoints import UDK_RED_ZONE_PAGE
+from ..api.endpoints import FOOTCLAN_RED_ZONE_PAGE, UDK_RED_ZONE_PAGE
 from ..display.tables import red_zone_table, console
-from ._scrape import load_const_data, to_float
+from ._scrape import load_const_data, load_current_season, merge_current_season, to_float
 
 VALID_POSITIONS = {"QB", "RB", "WR", "TE", "FB"}
 
@@ -27,7 +27,8 @@ def red_zone_command(
 
     \b
     Default sort 'touches' = RZ receiving targets + RZ rushing attempts + RZ
-    passing attempts. Useful for surfacing TD upside heading into a draft.
+    passing attempts. Useful for surfacing TD upside. In-season this defaults
+    to the current season to date (FootClan); -y for past years.
 
     \b
     EXAMPLES:
@@ -37,7 +38,8 @@ def red_zone_command(
       ffb red-zone QB -s pass_tds        # QBs by RZ pass TDs
       ffb red-zone --json                # JSON output
     """
-    raw = load_const_data(UDK_RED_ZONE_PAGE)
+    raw = merge_current_season(load_const_data(UDK_RED_ZONE_PAGE),
+                               load_current_season(FOOTCLAN_RED_ZONE_PAGE))
 
     # Default to the most recent season in the data.
     if season is None:

@@ -1,13 +1,14 @@
-"""ffb target-share, team positional target distribution (UDK Target Breakdown)."""
+"""ffb target-share, team positional target distribution (UDK Target Breakdown
+history plus the FootClan current season)."""
 from __future__ import annotations
 
 import json
 
 import typer
 
-from ..api.endpoints import UDK_TARGET_SHARE_PAGE
+from ..api.endpoints import FOOTCLAN_TARGET_BREAKDOWN_PAGE, UDK_TARGET_SHARE_PAGE
 from ..display.tables import target_share_table, console
-from ._scrape import load_const_data, to_float, to_int
+from ._scrape import load_const_data, load_current_season, merge_current_season, to_float, to_int
 
 
 def target_share_command(
@@ -19,9 +20,11 @@ def target_share_command(
     """Target Breakdown: how each team splits targets across WR/RB/TE. Requires login.
 
     \b
-    Aggregates a full season of team target distribution. Useful for finding
-    which offenses funnel volume to a position group (e.g. high TE-target teams
-    for a streaming tight end).
+    Aggregates a season (season to date in-season) of team target
+    distribution. Useful for finding which offenses funnel volume to a
+    position group (e.g. high TE-target teams for a streaming tight end).
+    In-season this defaults to the current season to date (FootClan); -y for
+    past years.
 
     \b
     EXAMPLES:
@@ -30,7 +33,8 @@ def target_share_command(
       ffb target-share KC              # one team's distribution
       ffb target-share -s volume       # busiest passing offenses
     """
-    raw = load_const_data(UDK_TARGET_SHARE_PAGE)
+    raw = merge_current_season(load_const_data(UDK_TARGET_SHARE_PAGE),
+                               load_current_season(FOOTCLAN_TARGET_BREAKDOWN_PAGE))
 
     if season is None:
         seasons = {to_int(r.get("season")) for r in raw if r.get("season")}

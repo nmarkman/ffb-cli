@@ -3,7 +3,9 @@
 The UDK "Weekly Consistency" and "Consistency Percentages" tools share one
 week-by-week payload (`const data = {"2025": [...], ...}`). This command computes
 the season-level consistency summary (start-worthy / boom / bust rates) and can
-also print any single player's week-by-week game log via --weekly.
+also print any single player's week-by-week game log via --weekly. The FootClan
+"Weekly Snapshot" tool carries the current season in the same row schema; it is
+merged in as another season key, so in-season the default is the season to date.
 """
 from __future__ import annotations
 
@@ -12,9 +14,9 @@ import statistics
 
 import typer
 
-from ..api.endpoints import UDK_CONSISTENCY_PAGE
+from ..api.endpoints import FOOTCLAN_CONSISTENCY_PAGE, UDK_CONSISTENCY_PAGE
 from ..display.tables import consistency_table, consistency_weekly_table, console
-from ._scrape import load_const_data_raw, to_float, to_int
+from ._scrape import load_const_data_raw, load_current_season, resolve_min_games, to_float, to_int
 
 VALID_POSITIONS = {"QB", "RB", "WR", "TE", "K", "DST"}
 
@@ -34,6 +36,17 @@ def _season_rows(data, season: int | None):
         chosen = season if (season in seasons) else seasons[0]
         return chosen, data.get(str(chosen), [])
     return season, data  # already a list
+
+
+def _with_current_season(data, current):
+    """Add the FootClan current-season rows (a plain list) to the UDK
+    season-keyed payload, so the default season is the one being played."""
+    if not isinstance(data, dict) or not isinstance(current, list) or not current:
+        return data
+    season = to_int(current[0].get("season"))
+    if not season:
+        return data
+    return {**data, str(season): current}
 
 
 def _player_weeks(row: dict, ppr: bool) -> list[dict]:
@@ -58,7 +71,7 @@ def consistency_command(
     ppr: bool = typer.Option(False, "--ppr", help="Use PPR weekly scoring (default: standard)"),
     season: int = typer.Option(None, "-y", "--season", help="Season year (defaults to most recent)"),
     sort_by: str = typer.Option("start", "-s", "--sort", help="Sort key: start | boom | ppg | bust"),
-    min_games: int = typer.Option(6, "--min-games", help="Minimum games played to include"),
+    min_games: int = typer.Option(None, "--min-games", help="Minimum games played to include (default 6, scaled down early in a season)"),
     limit: int = typer.Option(40, "-n", "--limit", help="Max results"),
     output_json: bool = typer.Option(False, "--json", help="Output as JSON"),
 ):
@@ -68,6 +81,7 @@ def consistency_command(
     A player is "startable" in a week if he finishes within his position's
     12-team starter cutoff (QB/TE top-12, RB top-24, WR top-30). "Boom" = a
     top-5 weekly finish; "bust" = a played week outside the startable cutoff.
+    In-season this defaults to the current season to date; -y for past years.
 
     \b
     EXAMPLES:
@@ -76,7 +90,9 @@ def consistency_command(
       ffb consistency WR --ppr          # WRs, PPR scoring
       ffb consistency -w "Josh Allen"   # one player's week-by-week game log
     """
-    season, raw = _season_rows(load_const_data_raw(UDK_CONSISTENCY_PAGE), season)
+    data = _with_current_season(load_const_data_raw(UDK_CONSISTENCY_PAGE),
+                                load_current_season(FOOTCLAN_CONSISTENCY_PAGE))
+    season, raw = _season_rows(data, season)
     if not raw:
         typer.echo("No consistency data found.")
         raise typer.Exit(1)
@@ -101,6 +117,7 @@ def consistency_command(
             consistency_weekly_table(player, weeks, scoring="ppr" if ppr else "std")
         return
 
+    min_games = resolve_min_games(min_games, 6, max((len(_player_weeks(r, ppr)) for r in raw), default=0))
     rows = []
     for r in raw:
         pos = (r.get("fantasy_position", "") or "").upper()

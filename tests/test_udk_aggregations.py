@@ -10,6 +10,23 @@ from ffb.main import app
 
 runner = CliRunner()
 
+# These commands also merge in the FootClan current season; stub that fetch so
+# the suite stays offline and exercises only the UDK fixture.
+_current_season_patches = [
+    patch(f"ffb.commands.{mod}.load_current_season", return_value=None)
+    for mod in ("market_share", "target_share", "consistency")
+]
+
+
+def setUpModule():
+    for p in _current_season_patches:
+        p.start()
+
+
+def tearDownModule():
+    for p in _current_season_patches:
+        p.stop()
+
 
 def invoke(patch_target, fixture, args):
     with patch(patch_target, return_value=fixture):
