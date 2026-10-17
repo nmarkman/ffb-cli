@@ -46,6 +46,12 @@ def share_range(rows, keys):
             assert 0 <= v <= 1.0001, f"{k}={v} out of [0,1]"
 
 
+def ok(cond, msg):
+    """Assert inside a validator lambda. A bare boolean in the (checks..., label)
+    tuple is silently discarded; this makes a false condition FAIL."""
+    assert cond, msg
+
+
 def check(name, args, validate, *, allow_empty=False, soft=False):
     try:
         rc, out, err = run(args)
@@ -80,7 +86,7 @@ CHECKS = [
     ("rankings --enrich", ["rankings", "WR", "--enrich", "-n", "5", "--json"],
      lambda d: (has(d, "risk", "upside", "blurb"), "enriched")[-1]),
     ("rankings --tier 1", ["rankings", "RB", "--tier", "1", "--json"],
-     lambda d: (all(r.get("tier") == 1 for r in d), "tier1")[-1]),
+     lambda d: (ok(all(r.get("tier") == 1 for r in d), "row failed invariant"), "tier1")[-1]),
     ("projections RB", ["projections", "RB", "-n", "5", "--json"],
      lambda d: (all_pos(d, "RB"), has(d, "pass_yds", "rec_yds"), "stats")[-1]),
     ("top200", ["top200", "-n", "10", "--json"],
@@ -90,13 +96,17 @@ CHECKS = [
      lambda d: (in_pos(d, {"RB", "WR", "TE"}), "flex pos")[-1]),
     # Trade / startsit (seasonal / fuzzy)
     ("trade", ["trade", "--give", "Travis Kelce", "--get", "Trey McBride", "--json"],
-     lambda d: ("give_total" in d and "get_total" in d, "trade")[-1], ),
-    ("start-sit", ["start-sit", "Ja'Marr Chase", "CeeDee Lamb", "--json"], lambda d: "ok"),
+     lambda d: (ok("give_total" in d and "get_total" in d, "missing totals"), "trade")[-1], ),
+    # In-season the tool must actually answer; offseason it reports available=false.
+    ("start-sit", ["start-sit", "Puka Nacua", "CeeDee Lamb", "--json"],
+     lambda d: "offseason" if d["available"] is False else
+               (ok(d["start"] == d["players"][0]["name"] and d["players"][0]["verdict"] == "START",
+                   "top row is not the START pick"), "answered")[-1]),
     # UDK research (existing)
     ("bye-weeks", ["bye-weeks", "--json"],
      lambda d: (len(d) >= 30 and all(r.get("bye_week") for r in d), f"{len(d)} teams")[-1]),
     ("bye-weeks -w 8", ["bye-weeks", "-w", "8", "--json"],
-     lambda d: (all(str(r.get("bye_week")) == "8" for r in d), "wk8")[-1]),
+     lambda d: (ok(all(str(r.get("bye_week")) == "8" for r in d), "row failed invariant"), "wk8")[-1]),
     ("sos", ["sos", "--json"], lambda d: f"{len(d)} teams"),
     ("sos WR", ["sos", "WR", "--json"], lambda d: f"{len(d)} teams"),
     ("red-zone", ["red-zone", "-n", "10", "--json"], lambda d: (seq_ranks(d), "ranked")[-1]),
@@ -117,14 +127,46 @@ CHECKS = [
     ("consistency weekly", ["consistency", "-w", "Josh Allen", "--json"],
      lambda d: (len(d["weeks"]) > 8, "log")[-1]),
     ("free-agency", ["free-agency", "-n", "5", "--json"],
-     lambda d: (all(r.get("name") for r in d), f"{len(d)} moves")[-1]),
+     lambda d: (ok(all(r.get("name") for r in d), "row failed invariant"), f"{len(d)} moves")[-1]),
     ("coaching-changes", ["coaching-changes", "--json"],
      lambda d: (len(d) >= 5, f"{len(d)} paras")[-1]),
     ("rookie-report WR", ["rookie-report", "WR", "-n", "5", "--json"],
      lambda d: (all_pos(d, "WR"), f"{len(d)} rookies")[-1]),
     ("experts sleepers", ["experts", "sleepers", "--json"],
-     lambda d: (all(r.get("name") and r.get("position") for r in d), f"{len(d)} picks")[-1]),
-    ("tools", ["tools", "--json"], lambda d: (len(d) >= 40, f"{len(d)} tools")[-1]),
+     lambda d: (ok(all(r.get("name") and r.get("position") for r in d), "row failed invariant"), f"{len(d)} picks")[-1]),
+    # ---- in-season FootClan ----
+    ("weekly QB", ["weekly", "QB", "-n", "12", "--json"],
+     lambda d: (seq_ranks(d["players"]), all_pos(d["players"], "QB"), f"wk{d['week']}")[-1]),
+    ("weekly FLEX", ["weekly", "-n", "30", "--json"],
+     lambda d: (seq_ranks(d["players"]), in_pos(d["players"], {"RB", "WR", "TE"}),
+                has(d["players"], "andy_rank", "jason_rank", "mike_rank", "matchup"), "flex")[-1]),
+    ("weekly DST", ["weekly", "DST", "-n", "10", "--json"],
+     lambda d: (all_pos(d["players"], "DST"), f"{len(d['players'])} DST")[-1]),
+    ("ros WR", ["ros", "WR", "-n", "20", "--json"],
+     lambda d: (seq_ranks(d["players"]), all_pos(d["players"], "WR"),
+                ok(all(p["remaining_games"] for p in d["players"]), "missing remaining_games"), "ros")[-1]),
+    ("waivers", ["waivers", "--json"],
+     lambda d: (seq_ranks(d["players"]), has(d["players"], "faab"), f"{len(d['players'])} adds")[-1]),
+    ("waivers DST", ["waivers", "DST", "--json"], lambda d: f"{len(d['players'])} DST", ),
+    ("stream QB", ["stream", "QB", "--json"],
+     lambda d: (seq_ranks(d["teams"]), ok(len(d["teams"]) >= 28, f"only {len(d['teams'])} teams"),
+                ok(d["teams"][0][d["ranked_by"]] >= d["teams"][-1][d["ranked_by"]], "not sorted softest first"),
+                f"thru wk{d['through_week']} by {d['ranked_by']}")[-1]),
+    ("games", ["games", "--json"],
+     lambda d: (ok(all(g["home_implied"] is None or abs(g["home_implied"] + g["away_implied"] - g["over_under"]) < 0.01
+                       for g in d["games"]), "implied totals don't sum to the O/U"),
+                f"{len(d['games'])} games, {len(d['byes'])} byes")[-1]),
+    ("player-news", ["player-news", "-n", "10", "--json"], lambda d: (has(d, "headline", "name"), f"{len(d)} items")[-1]),
+    ("player-news injuries", ["player-news", "--injuries", "-n", "10", "--json"],
+     lambda d: (ok(all(x["injury_status"] for x in d), "row without injury status"), "injuries")[-1]),
+    ("dfs dk", ["dfs", "-n", "20", "--json"],
+     lambda d: (ok(all(p["salary"] > 0 and abs(p["value"] - p["points"] / (p["salary"] / 1000)) < 0.01
+                       for p in d["players"]), "value != points per $1K"), "values")[-1]),
+    ("dfs fd QB", ["dfs", "QB", "--site", "fd", "--json"], lambda d: (all_pos(d["players"], "QB"), "fd")[-1]),
+    ("market-share current", ["market-share", "WR", "-n", "5", "--json"],
+     lambda d: (share_range(d, ["target_share", "points_share"]), "current")[-1]),
+    ("consistency current", ["consistency", "RB", "-n", "5", "--json"], lambda d: f"{len(d)} rows"),
+    ("tools", ["tools", "--json"], lambda d: (ok(len(d) >= 40, f"only {len(d)} tools"), f"{len(d)} tools")[-1]),
     # Dynasty
     ("dyn rankings", ["dynasty", "rankings", "-n", "5", "--json"], lambda d: f"{len(d)} rows"),
     ("dyn startup", ["dynasty", "startup", "-n", "5", "--json"], lambda d: f"{len(d)} rows"),

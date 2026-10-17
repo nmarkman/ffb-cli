@@ -1,4 +1,5 @@
-"""ffb market-share, player share of team usage (UDK Market Share)."""
+"""ffb market-share, player share of team usage (UDK Market Share history plus
+the FootClan current season)."""
 from __future__ import annotations
 
 import json
@@ -6,9 +7,16 @@ from collections import defaultdict
 
 import typer
 
-from ..api.endpoints import UDK_MARKET_SHARE_PAGE
+from ..api.endpoints import FOOTCLAN_MARKET_SHARE_PAGE, UDK_MARKET_SHARE_PAGE
 from ..display.tables import market_share_table, console
-from ._scrape import load_const_data, to_float, to_int
+from ._scrape import (
+    load_const_data,
+    load_current_season,
+    merge_current_season,
+    resolve_min_games,
+    to_float,
+    to_int,
+)
 
 VALID_POSITIONS = {"QB", "RB", "WR", "TE"}
 
@@ -18,16 +26,18 @@ def market_share_command(
     team: str = typer.Option(None, "-t", "--team", help="Team code filter (KC, BUF, ...)"),
     season: int = typer.Option(None, "-y", "--season", help="Season year (defaults to most recent)"),
     sort_by: str = typer.Option("targets", "-s", "--sort", help="Sort key: targets | rush | rec_yds | points"),
-    min_games: int = typer.Option(4, "--min-games", help="Minimum games played to include"),
+    min_games: int = typer.Option(None, "--min-games", help="Minimum games played to include (default 4, scaled down early in a season)"),
     limit: int = typer.Option(40, "-n", "--limit", help="Max results"),
     output_json: bool = typer.Option(False, "--json", help="Output as JSON"),
 ):
     """Market Share: each player's share of his team's usage. Requires login.
 
     \b
-    Aggregates a full season of game logs into the player's share of team
-    receiving targets, rushing attempts, receiving yards, and fantasy points.
-    A high target share with a low ADP is the classic value signal.
+    Aggregates a season of game logs (season to date in-season) into the
+    player's share of team receiving targets, rushing attempts, receiving
+    yards, and fantasy points.
+    A high target share with a low ADP is the classic value signal. In-season
+    this defaults to the current season to date (FootClan); -y for past years.
 
     \b
     EXAMPLES:
@@ -36,7 +46,8 @@ def market_share_command(
       ffb market-share -t KC           # Chiefs players
       ffb market-share RB -s rush      # RBs by rushing-attempt share
     """
-    raw = load_const_data(UDK_MARKET_SHARE_PAGE)
+    raw = merge_current_season(load_const_data(UDK_MARKET_SHARE_PAGE),
+                               load_current_season(FOOTCLAN_MARKET_SHARE_PAGE))
 
     if season is None:
         seasons = {to_int(r.get("season")) for r in raw if r.get("season")}
@@ -71,6 +82,8 @@ def market_share_command(
         a["team_rec_yd"] += to_float(r.get("total_receiving_yards"))
         a["pts"] += to_float(r.get("fantasy_points"))
         a["team_pts"] += to_float(r.get("total_fantasy_points"))
+
+    min_games = resolve_min_games(min_games, 4, max((a["games"] for a in agg.values()), default=0))
 
     def share(num: float, den: float):
         return round(num / den, 4) if den else None

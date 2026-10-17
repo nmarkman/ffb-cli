@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
@@ -130,25 +132,37 @@ def trade_table(analysis: dict) -> None:
     console.print(table)
 
 
-def startsit_table(result: dict) -> None:
-    table = Table(title="Start/Sit Recommendation")
+def startsit_table(players: list[dict], *, week: int, scoring: str) -> None:
+    # Kept narrow enough for an 80-column terminal; the per-analyst ranks and
+    # the over/under are in --json.
+    table = Table(title=f"Who Should I Start? Week {week} ({scoring.upper()})")
+    table.add_column("", style="bold")
     table.add_column("Player", style="bold")
     table.add_column("Pos", style="cyan")
-    table.add_column("Team", style="green")
     table.add_column("Matchup")
-    table.add_column("Verdict", style="yellow bold")
+    table.add_column("Proj", justify="right", style="yellow")
+    table.add_column("Rk", justify="right")
+    table.add_column("Spread", justify="right")
+    table.add_column("Impl", justify="right")
+    table.add_column("Status", style="red")
 
-    for p in result.get("players", []):
+    styles = {"START": "[green]START[/green]", "SIT": "[dim]SIT[/dim]"}
+    for p in players:
+        verdict = p.get("verdict", "")
+        matchup = p.get("matchup", "")
+        if p.get("team") and matchup not in ("BYE", "-"):
+            matchup = f"{p['team']} {matchup}"
         table.add_row(
+            styles.get(verdict, f"[red]{verdict}[/red]"),
             p.get("name", ""),
             p.get("position", ""),
-            p.get("team", ""),
-            p.get("matchup", ""),
-            p.get("verdict", ""),
+            matchup,
+            _fmt_num(p.get("points"), 1),
+            _fmt_int(p.get("rank")),
+            _fmt_spread(p.get("spread")),
+            _fmt_num(p.get("implied_total"), 1),
+            p.get("injury_status") or "",
         )
-
-    if result.get("analysis"):
-        console.print(f"\n[dim]{result['analysis']}[/dim]")
     console.print(table)
 
 
@@ -502,6 +516,246 @@ def consistency_weekly_table(player: dict, weeks: list[dict], *, scoring: str) -
             "Y" if w.get("started") else "-",
         )
     console.print(table)
+
+
+def weekly_rankings_table(rows: list[dict], *, week: int, position: str, scoring: str) -> None:
+    table = Table(title=f"Week {week} Premium Rankings: {position} ({scoring.upper()})")
+    table.add_column("#", justify="right", style="dim")
+    table.add_column("Player", style="bold")
+    if position == "FLEX":
+        table.add_column("Pos", style="cyan")
+    table.add_column("Team", style="green")
+    table.add_column("Matchup")
+    table.add_column("Proj", justify="right", style="yellow")
+    table.add_column("Andy", justify="right", style="dim")
+    table.add_column("Jason", justify="right", style="dim")
+    table.add_column("Mike", justify="right", style="dim")
+    table.add_column("Status", style="red")
+    for r in rows:
+        cells = [str(r.get("rank", "")), r.get("name", "")]
+        if position == "FLEX":
+            cells.append(r.get("position", ""))
+        cells += [
+            r.get("team", ""),
+            r.get("matchup", ""),
+            _fmt_num(r.get("points"), 1),
+            _fmt_int(r.get("andy_rank")),
+            _fmt_int(r.get("jason_rank")),
+            _fmt_int(r.get("mike_rank")),
+            r.get("injury_status") or "",
+        ]
+        table.add_row(*cells)
+    console.print(table)
+
+
+def ros_rankings_table(rows: list[dict], *, week: int, position: str, scoring: str) -> None:
+    table = Table(title=f"Rest-of-Season Rankings: {position} ({scoring.upper()}, as of Week {week})")
+    table.add_column("#", justify="right", style="dim")
+    table.add_column("Player", style="bold")
+    if position == "FLEX":
+        table.add_column("Pos", style="cyan")
+    table.add_column("Team", style="green")
+    table.add_column("ROS Pts", justify="right", style="yellow")
+    table.add_column("Gms", justify="right", style="dim")
+    table.add_column("PPG", justify="right")
+    table.add_column("Andy", justify="right", style="dim")
+    table.add_column("Jason", justify="right", style="dim")
+    table.add_column("Mike", justify="right", style="dim")
+    for r in rows:
+        cells = [str(r.get("rank", "")), r.get("name", "")]
+        if position == "FLEX":
+            cells.append(r.get("position", ""))
+        cells += [
+            r.get("team", ""),
+            _fmt_num(r.get("points"), 1),
+            _fmt_int(r.get("remaining_games")),
+            _fmt_num(r.get("ppg"), 1),
+            _fmt_int(r.get("andy_rank")),
+            _fmt_int(r.get("jason_rank")),
+            _fmt_int(r.get("mike_rank")),
+        ]
+        table.add_row(*cells)
+    console.print(table)
+
+
+def waiver_rankings_table(rows: list[dict], *, week: int, position: str) -> None:
+    table = Table(title=f"Week {week} Waiver Wire Rankings: {position}")
+    table.add_column("#", justify="right", style="dim")
+    table.add_column("Player", style="bold")
+    table.add_column("Pos", style="cyan")
+    table.add_column("Team", style="green")
+    table.add_column("Matchup")
+    table.add_column("FAAB", justify="right", style="yellow")
+    table.add_column("Andy", justify="right", style="dim")
+    table.add_column("Jason", justify="right", style="dim")
+    table.add_column("Mike", justify="right", style="dim")
+    table.add_column("Note", style="magenta")
+    for r in rows:
+        table.add_row(
+            str(r.get("rank", "")),
+            r.get("name", ""),
+            r.get("position", ""),
+            r.get("team", ""),
+            r.get("matchup", ""),
+            r.get("faab", "-"),
+            _fmt_int(r.get("andy_rank")),
+            _fmt_int(r.get("jason_rank")),
+            _fmt_int(r.get("mike_rank")),
+            "STASH" if r.get("stash") else "",
+        )
+    console.print(table)
+
+
+def stream_finder_table(rows: list[dict], *, position: str, through_week: int,
+                        upcoming: list[int], adjusted: bool) -> None:
+    subject = "Offense" if position == "DST" else "Defense"
+    basis = "schedule-adjusted" if adjusted else "raw points allowed"
+    table = Table(title=f"Stream Finder vs {position}, Weeks 1-{through_week} ({basis})")
+    table.add_column("#", justify="right", style="dim")
+    table.add_column(subject, style="bold")
+    table.add_column("Gms", justify="right", style="dim")
+    table.add_column("PAE", justify="right", style="yellow" if adjusted else "dim")
+    table.add_column("FPA", justify="right", style="dim" if adjusted else "yellow")
+    for w in upcoming:
+        table.add_column(f"Wk {w}", justify="center", style="cyan")
+    for r in rows:
+        table.add_row(
+            str(r.get("rank", "")),
+            r.get("team", ""),
+            str(r.get("games", "")),
+            _fmt_spread(r.get("pae")),
+            _fmt_num(r.get("avg_allowed"), 1),
+            *[r.get("upcoming", {}).get(str(w), "") for w in upcoming],
+        )
+    console.print(table)
+    console.print(
+        f"[dim]Week columns show the opponent ('@' = away). Opponents of the top rows are "
+        f"the {position} streams.[/dim]"
+    )
+
+
+def games_table(rows: list[dict], *, week: int, byes: list[str]) -> None:
+    table = Table(title=f"Week {week} Games")
+    table.add_column("Kickoff", style="dim")
+    table.add_column("Matchup", style="bold")
+    table.add_column("Spread", justify="right")
+    table.add_column("O/U", justify="right", style="yellow")
+    table.add_column("Implied", justify="right")
+    table.add_column("Weather")
+    for g in rows:
+        spread = g.get("home_spread")
+        line = f"{g['home']} {_fmt_spread(spread)}" if spread is not None else "-"
+        implied = (
+            f"{g['away']} {_fmt_num(g.get('away_implied'), 1)} / {g['home']} {_fmt_num(g.get('home_implied'), 1)}"
+            if g.get("home_implied") is not None else "-"
+        )
+        status = g.get("status") or ""
+        table.add_row(
+            status if status.startswith("F") else _fmt_kickoff(g.get("date")),
+            f"{g['away']} @ {g['home']}",
+            line,
+            _fmt_num(g.get("over_under"), 1),
+            implied,
+            _fmt_weather(g.get("weather")),
+        )
+    console.print(table)
+    if byes:
+        console.print(f"[dim]Byes: {', '.join(byes)}[/dim]")
+
+
+def player_news_table(rows: list[dict], *, full: bool) -> None:
+    if full:
+        for r in rows:
+            status = f" [red]{r['injury_status']}[/red]" if r.get("injury_status") else ""
+            body = r.get("notes") or ""
+            if r.get("analysis"):
+                body += f"\n\n[dim]{r['analysis']}[/dim]"
+            console.print(Panel(
+                body,
+                title=f"{r.get('name', '')} ({r.get('position', '')} {r.get('team', '')}): {r.get('headline', '')}{status}",
+                subtitle=r.get("time_ago") or "",
+            ))
+        return
+    table = Table(title="Player News")
+    table.add_column("When", style="dim")
+    table.add_column("Player", style="bold")
+    table.add_column("Pos", style="cyan")
+    table.add_column("Team", style="green")
+    table.add_column("Headline")
+    table.add_column("Status", style="red")
+    for r in rows:
+        table.add_row(
+            r.get("time_ago") or "",
+            r.get("name", ""),
+            r.get("position", ""),
+            r.get("team", ""),
+            r.get("headline", ""),
+            r.get("injury_status") or "",
+        )
+    console.print(table)
+
+
+def dfs_table(rows: list[dict], *, site: str, sort_by: str) -> None:
+    table = Table(title=f"{site} Weekly Values (sorted by {sort_by})")
+    table.add_column("Player", style="bold")
+    table.add_column("Pos", style="cyan")
+    table.add_column("Team", style="green")
+    table.add_column("Opp")
+    table.add_column("Opp Rk", justify="right", style="dim")
+    table.add_column("Salary", justify="right")
+    table.add_column("Proj", justify="right", style="yellow")
+    table.add_column("Pts/$1K", justify="right", style="green")
+    table.add_column("Status", style="red")
+    for r in rows:
+        table.add_row(
+            r.get("name", ""),
+            r.get("position", ""),
+            r.get("team", ""),
+            r.get("opponent") or "",
+            _fmt_int(r.get("opp_pos_rank")),
+            f"${r.get('salary', 0):,}",
+            _fmt_num(r.get("points"), 1),
+            _fmt_num(r.get("value"), 2),
+            r.get("injury_status") or "",
+        )
+    console.print(table)
+
+
+def _fmt_spread(val) -> str:
+    if val is None or val == "":
+        return ""
+    try:
+        v = float(val)
+    except (TypeError, ValueError):
+        return str(val)
+    return "PK" if v == 0 else f"{v:+.1f}"
+
+
+def _fmt_kickoff(date: str | None) -> str:
+    """The site's game times are UTC ("2026-10-18 17:00:00"); show local."""
+    if not date:
+        return ""
+    try:
+        dt = datetime.fromisoformat(date).replace(tzinfo=timezone.utc).astimezone()
+    except ValueError:
+        return date
+    # %I, not %-I: the dash flag isn't portable (fails on Windows).
+    return dt.strftime("%a %I:%M %p").replace(" 0", " ", 1)
+
+
+def _fmt_weather(wx: dict | None) -> str:
+    if not wx:
+        return ""
+    if wx.get("dome"):
+        return "Dome"
+    parts = [wx.get("summary") or ""]
+    if wx.get("temperature") is not None:
+        parts.append(f"{wx['temperature']:.0f}F")
+    if wx.get("wind_mph") is not None:
+        parts.append(f"wind {wx['wind_mph']:.0f}")
+    if wx.get("precip_pct"):
+        parts.append(f"{wx['precip_pct']}% precip")
+    return ", ".join(p for p in parts if p)
 
 
 def _fmt_pct(val) -> str:

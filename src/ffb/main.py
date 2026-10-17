@@ -1,5 +1,8 @@
+import sys
+
 import typer
 
+from .api.client import AuthExpiredError
 from .commands import login, players
 from .commands import dynasty as dynasty_pkg
 from .commands.rankings import rankings_command
@@ -23,26 +26,55 @@ from .commands.rookie_report import rookie_report_command
 from .commands.consistency import consistency_command
 from .commands.experts import experts_command
 from .commands.tools import tools_command
+from .commands.weekly import weekly_command
+from .commands.ros import ros_command
+from .commands.waivers import waivers_command
+from .commands.stream import stream_command
+from .commands.games import games_command
+from .commands.player_news import player_news_command
+from .commands.dfs import dfs_command
 
-app = typer.Typer(
+
+class FFBTyper(typer.Typer):
+    """Turns an expired session into the same one-line message everywhere,
+    instead of a stack trace from whichever command hit it first."""
+
+    def __call__(self, *args, **kwargs):
+        try:
+            return super().__call__(*args, **kwargs)
+        except AuthExpiredError:
+            typer.echo("Session expired. Run `ffb login` to re-authenticate.", err=True)
+            sys.exit(1)
+
+app = FFBTyper(
     name="ffb",
     help="""CLI for The Fantasy Footballers (thefantasyfootballers.com).
 
-Wraps their premium tools (rankings, projections, trade analyzer, start/sit)
-and public features (player search, news).
+Wraps their premium tools (draft kit, in-season FootClan tools, DFS Pass,
+dynasty) and public features (player search, news).
 
 \b
 AUTH: Most commands require a premium account. Run `ffb login` first to
 authenticate via browser. Session is saved to ~/.config/ffb/session.json
-and lasts ~24 hours. Public commands (players, news) work without login.
+and lasts ~24 hours. Public commands (players, news) work without login and
+never send the session, so an expired login can't break them.
 
 \b
 COMMANDS REQUIRING LOGIN: rankings, projections, trade, start-sit, dynasty,
                           bye-weeks, sos, red-zone, best-ball,
                           top200, superflex, flex, value-scout, market-share,
                           target-share, consistency, free-agency,
-                          coaching-changes, rookie-report, experts
+                          coaching-changes, rookie-report, experts,
+                          weekly, ros, waivers, stream, games,
+                          player-news, dfs
 COMMANDS WITHOUT LOGIN:   players, news, tools
+
+\b
+IN-SEASON (FootClan): weekly (this week's ranks), start-sit, waivers (with
+FAAB), ros (rest of season), stream (Stream Finder), games (Vegas lines +
+weather), player-news (news + injuries), dfs (DraftKings/FanDuel values).
+market-share, target-share, red-zone and consistency default to the current
+season once games are played (-y for past seasons).
 
 \b
 TOOLS MAP: Run `ffb tools` to see every Fantasy Footballers tool, what's free
@@ -63,6 +95,13 @@ EXAMPLES:
   ffb projections RB                         # RB stat projections
   ffb trade --give "Kelce, Lamb" --get "Chase"  # analyze a trade
   ffb start-sit "Ja'Marr Chase" "CeeDee Lamb"  # start/sit comparison
+  ffb weekly RB                              # this week's RB rankings
+  ffb waivers                                # waiver adds + FAAB bids
+  ffb ros WR                                 # rest-of-season WR ranks
+  ffb stream QB                              # QB streaming matchups
+  ffb games -s total                         # slate by over/under
+  ffb player-news --injuries -p WR           # WR injury report
+  ffb dfs RB --site fd                       # FanDuel RB values
   ffb bye-weeks -w 8                         # teams on bye in week 8
   ffb sos WR                                 # easiest WR schedules
   ffb red-zone RB -n 30                      # top 30 RBs by RZ usage
@@ -111,6 +150,13 @@ app.command(name="rookie-report")(rookie_report_command)
 app.command(name="consistency")(consistency_command)
 app.command(name="experts")(experts_command)
 app.command(name="tools")(tools_command)
+app.command(name="weekly")(weekly_command)
+app.command(name="ros")(ros_command)
+app.command(name="waivers")(waivers_command)
+app.command(name="stream")(stream_command)
+app.command(name="games")(games_command)
+app.command(name="player-news")(player_news_command)
+app.command(name="dfs")(dfs_command)
 
 
 if __name__ == "__main__":

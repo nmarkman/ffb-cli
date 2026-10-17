@@ -2,7 +2,7 @@
 
 CLI tool for [The Fantasy Footballers](https://www.thefantasyfootballers.com/) premium tools and public features.
 
-Access rankings, projections, the trade analyzer, start/sit comparisons, the full UDK research suite (market share, target breakdown, value scout, consistency, expert lists, and more), the dynasty toolkit, player search, and news, all from your terminal. Crafted intentionally for both human and AI agent use (assuming your agent has access to your Fantasy Footballers user/pw)
+Access rankings, projections, the in-season FootClan tools (weekly ranks, start/sit, waivers with FAAB, rest-of-season ranks, Stream Finder, Vegas lines, player news), DFS values, the trade analyzer, the full UDK research suite (market share, target breakdown, value scout, consistency, expert lists, and more), the dynasty toolkit, player search, and news, all from your terminal. Crafted intentionally for both human and AI agent use (assuming your agent has access to your Fantasy Footballers user/pw)
 
 ## What's free vs. paywalled
 
@@ -10,8 +10,8 @@ The Footballers gate almost everything behind a purchase. Only **player search**
 
 - **UDK** (Ultimate Draft Kit): the redraft draft-prep suite (rankings, projections, value scout, market share, target breakdown, consistency, expert lists, red zone, SoS, bye weeks, free agency, coaching changes, rookie report).
 - **UDK+** (Dynasty Pass): the dynasty toolkit (`ffb dynasty ...`).
-- **DFS Pass**: best ball.
-- **FootClan**: in-season tools (trade analyzer, start/sit).
+- **DFS Pass**: best ball and weekly DraftKings/FanDuel values.
+- **FootClan**: in-season tools (weekly premium ranks, start/sit, waivers, rest-of-season ranks, Stream Finder, dashboard games + news, trade analyzer).
 
 Run `ffb tools` for the full map of every tool, its tier, and the CLI command that covers it:
 
@@ -25,7 +25,7 @@ ffb tools --missing        # tools not (yet) wrapped
 ## Requirements
 
 - Python 3.12+
-- A Fantasy Footballers premium account (for rankings, projections, trade, start-sit)
+- A Fantasy Footballers premium account (for everything except player search and news)
 
 ## Installation
 
@@ -59,7 +59,7 @@ Most commands require a premium Fantasy Footballers account. Run `ffb login` to 
 ffb login
 ```
 
-This opens a Chromium browser window. Log in with your account, and the CLI captures your session automatically. Sessions last ~24 hours. When expired, just run `ffb login` again.
+This opens a Chromium browser window. Log in with your account, and the CLI captures your session automatically. Sessions last ~24 hours. When expired, any command that needs the session prints "Session expired. Run `ffb login`" and exits 1; just run `ffb login` again. The public commands (`players`, `news`) never send your session, so an expired login can't break them.
 
 ```bash
 ffb login --status   # check if your session is valid
@@ -120,14 +120,44 @@ ffb trade --give "Kelce, Lamb" --get "Chase"   # CLI mode
 ffb trade                                       # interactive mode (prompts for players)
 ```
 
-### Start/Sit (login required, in-season only)
+### In-season tools (login required, FootClan)
 
 ```bash
-ffb start-sit "Ja'Marr Chase" "CeeDee Lamb"
-ffb start-sit "Josh Allen" "Jalen Hurts" "Lamar Jackson"
+ffb weekly                       # this week's FLEX ranks (consensus + Andy/Jason/Mike)
+ffb weekly QB -n 12              # QB ranks with matchups
+ffb weekly DST                   # defense ranks
+ffb weekly QB --pass-td 6        # 6-pt passing TDs (the site's default view)
+
+ffb start-sit "Puka Nacua" "CeeDee Lamb"     # START/SIT on this week's projections
+ffb start-sit "Chiefs DST" "Bills DST"       # defenses match on team name/code
+ffb start-sit "Josh Allen" "Jalen Hurts" "Lamar Jackson" -s ppr
+
+ffb waivers                      # waiver adds ranked, with suggested FAAB %
+ffb waivers RB                   # RB adds only
+ffb waivers DST                  # defense streamers on waivers
+
+ffb ros                          # rest-of-season FLEX ranks, ROS points + PPG
+ffb ros QB --pass-td 6
+
+ffb stream QB                    # softest defenses vs QBs + who they play next
+ffb stream TE -w 4               # four weeks of upcoming opponents
+ffb stream RB --raw              # raw points allowed instead of schedule-adjusted
+
+ffb games                        # slate: spread, O/U, implied totals, weather, byes
+ffb games -s total               # highest totals first
+
+ffb player-news                  # latest player news + injury status
+ffb player-news "Mayfield" --full  # one player, with the analysis
+ffb player-news --injuries -p RB   # RB injury report
 ```
 
-This tool is only available during the NFL season.
+Start/sit names are fuzzy-matched. A player on bye or without a projection
+shows as `BYE` / `NO PROJ` rather than being swapped for a similar name, and a
+bare last name that could mean two players (e.g. "Jefferson") asks for the
+full name. Weekly, ROS, start/sit and Stream Finder numbers were checked
+against the site's rendered tables and match (use `--pass-td 6` to match the
+site's default QB scoring; the CLI defaults to 4-point passing TDs like
+`ffb rankings`).
 
 ### News (no login required)
 
@@ -158,7 +188,7 @@ ffb sos WR                       # sorted by easiest WR schedule
 ffb sos QB --hard                # toughest QB schedules first
 ffb sos -t KC                    # one team's full SoS row
 
-ffb red-zone                     # top 25 by RZ touches (last season)
+ffb red-zone                     # top 25 by RZ touches (current season in-season)
 ffb red-zone RB -n 30            # top 30 RBs
 ffb red-zone WR -s rec_targets   # WRs by RZ targets
 ffb red-zone QB -s pass_tds      # QBs by RZ pass TDs
@@ -177,7 +207,7 @@ ffb market-share RB -s rush      # RBs by rushing-attempt share
 ffb target-share -s te           # teams that funnel targets to TEs
 ffb target-share KC              # one team's WR/RB/TE target split
 
-ffb consistency RB -s boom       # RB boom-rate leaders
+ffb consistency RB -s boom       # RB boom-rate leaders (current season in-season)
 ffb consistency WR --ppr         # WRs, PPR start-worthy rates
 ffb consistency -w "Josh Allen"  # one player's week-by-week game log
 
@@ -189,6 +219,11 @@ ffb experts sleepers             # the Footballers' sleeper picks
 ffb experts breakouts RB         # RB breakouts
 ffb experts busts                # players to avoid
 ```
+
+In-season, `market-share`, `target-share`, `red-zone` and `consistency` default
+to the current season to date (pulled from the FootClan versions of those
+tools); pass `-y 2025` for last season. The `--min-games` filters on
+`market-share` and `consistency` scale down early in the season unless you set them.
 
 The expert lists render in a headless browser (they have no inline data), so the
 first run is a few seconds slower; results are then cached for an hour.
@@ -211,7 +246,15 @@ ffb projections QB --enrich --json   # risk/upside/targets/blurb in JSON
 ffb best-ball                    # top 50 by Underdog ADP
 ffb best-ball WR -n 30           # top 30 WR best-ball values
 ffb best-ball -t KC              # all KC players
+
+ffb dfs                          # best DraftKings values (points per $1K)
+ffb dfs RB --site fd             # FanDuel RBs
+ffb dfs WR --max-salary 5000     # cheap WRs
+ffb dfs QB -s points             # sort by points (value | points | salary)
 ```
+
+`ffb dfs` scores the analysts' weekly stat projections with DraftKings (full
+PPR) or FanDuel (half PPR) rules; DraftKings' yardage bonuses are not applied.
 
 ### Dynasty (login required, UDK+)
 
@@ -228,8 +271,9 @@ ffb dynasty rookie-overview      # narrative outlook on the rookie class
 
 ## JSON Output
 
-Every command supports `--json` for machine-readable output (including error
-states like the offseason start/sit tool, which returns `{"available": false}`).
+Every command supports `--json` for machine-readable output. Offseason,
+`start-sit` returns `{"available": false, "reason": ...}`; the other in-season
+commands print a plain "nothing posted right now" message and exit 0.
 This is the recommended surface for AI agents:
 
 ```bash
@@ -238,6 +282,17 @@ ffb players search "mahomes" --json
 ffb consistency RB --json
 ffb tools --json                 # the full tool/coverage map as data
 ```
+
+The in-season commands return objects rather than bare lists:
+- `weekly`, `ros`, `waivers`: `{"week", "position", "players": [...]}` (`weekly`
+  and `ros` also carry `scoring`).
+- `start-sit`: `{"available", "week", "scoring", "start", "players": [...]}`, each
+  player with a `verdict` of `START`, `SIT`, `BYE` or `NO PROJ`.
+- `games`: `{"week", "games": [...], "byes": [...]}`.
+- `stream`: `{"position", "through_week", "ranked_by", "upcoming_weeks", "teams": [...]}`
+  (`through_week` is the last completed week; `ranked_by` is `pae` or `avg_allowed`).
+- `dfs`: `{"site", "players": [...]}`.
+- `player-news` returns a bare list, newest first.
 
 Conventions an agent can rely on across commands:
 - Position filter is a positional argument (`ffb rankings QB`); valid values are QB, RB, WR, TE (plus K, DST where applicable).
@@ -262,6 +317,8 @@ src/ffb/
 │   ├── udk_global.py    # window.udk.data loader + enrichment index
 │   └── render.py        # Headless render (expert lists) via saved session
 ├── commands/            # One file per command (+ commands/dynasty/)
+│   ├── _scrape.py       # Shared page fetch + current-season merge
+│   └── _inseason.py     # FootClan in-season data layer (consensus ranks, Vegas, Stream Finder)
 ├── cache/
 │   └── store.py         # File-based JSON cache with TTL
 └── display/

@@ -51,6 +51,27 @@ UDK_GLOBAL_DATA_PAGE = UDK_SOS_PAGE
 
 # DFS Pass (best ball rankings, also `const data = [...]`).
 DFS_BEST_BALL_PAGE = "/2026-ultimate-dfs-pass/dfs-pass-best-ball-rankings/"
+# Weekly DFS rankings. The DraftKings page's `const data` carries every player's
+# DraftKings, FanDuel and Yahoo salary, so one page serves both sites.
+DFS_WEEKLY_PAGE = "/2026-ultimate-dfs-pass/dfs-pass-weekly-dfs-rankings-draftkings/"
+
+# In-season FootClan tools. These pages embed the current week's data inline.
+# The start-sit page is the richest single source: `window.udk.data.projections`
+# holds every analyst's weekly QB/RB/WR/TE projection, and its `const data`
+# carries D/ST + K ranks, Vegas lines, weather, the schedule, and the
+# Stream Finder grid. `ffb weekly`, `start-sit`, `games` and `stream` all read it.
+FOOTCLAN_START_SIT_PAGE = "/footclan/start-sit/"
+FOOTCLAN_ROS_PAGE = "/footclan/rest-of-season-rankings/"
+FOOTCLAN_WAIVERS_PAGE = "/footclan/waiver-wire-rankings/"
+FOOTCLAN_DASHBOARD_PAGE = "/footclan/ultimate-dashboard/"
+
+# FootClan versions of the UDK research tables: same row schema, but the
+# current season's data (the UDK pages hold last season's). Merged into the
+# UDK payload so the research commands default to the current season in-season.
+FOOTCLAN_MARKET_SHARE_PAGE = "/footclan/market-share/"
+FOOTCLAN_TARGET_BREAKDOWN_PAGE = "/footclan/target-breakdown/"
+FOOTCLAN_RED_ZONE_PAGE = "/footclan/red-zone-report/"
+FOOTCLAN_CONSISTENCY_PAGE = "/footclan/2026-weekly-consistency-charts/"
 
 # Dynasty F.E.L.I.X. scores (rookie reliability metric, `const data = [...]`).
 DYNASTY_FELIX_PAGE = "/2026-dynasty-pass/felix-scores/"

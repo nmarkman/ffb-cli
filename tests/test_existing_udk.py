@@ -9,6 +9,18 @@ from ffb.main import app
 
 runner = CliRunner()
 
+# red-zone also merges in the FootClan current season; stub that fetch so the
+# suite stays offline and exercises only the UDK fixture.
+_current_season_patch = patch("ffb.commands.red_zone.load_current_season", return_value=None)
+
+
+def setUpModule():
+    _current_season_patch.start()
+
+
+def tearDownModule():
+    _current_season_patch.stop()
+
 
 def invoke(target, fixture, args):
     with patch(target, return_value=fixture):

@@ -30,3 +30,4 @@ CACHE_TTL_PLAYERS = 86_400  # 24 hours
 CACHE_TTL_PROJECTIONS = 3_600  # 1 hour
 CACHE_TTL_NEWS = 1_800  # 30 minutes
 CACHE_TTL_UDK_PAGE = 3_600  # 1 hour, mirrors dynasty page TTL
+CACHE_TTL_INSEASON = 1_800  # 30 min: weekly ranks, lines and news move during the week
